@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Módulo de almacenamiento: archivo de bóveda cifrado, copias de seguridad, ajustes y registro en disco. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PassDesk.Core\PassDesk.Core.csproj" />
+    <ProjectReference Include="..\PassDesk.Crypto\PassDesk.Crypto.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PassDesk.Tests" />
+  </ItemGroup>
+</Project>

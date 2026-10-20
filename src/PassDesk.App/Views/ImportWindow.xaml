@@ -1,0 +1,214 @@
+<Window x:Class="PassDesk.App.Views.ImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Importar desde Contraseñas de Apple"
+        Width="820" Height="700" MinWidth="640" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Brush.Window}" Foreground="{DynamicResource Brush.Text}"
+        FontFamily="{StaticResource Font.Text}" FontSize="14" UseLayoutRounding="True"
+        AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
+    <Grid Margin="28,22,28,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Pasos -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Border x:Name="Step1Chip" Style="{StaticResource Chip}" Padding="12,4"><TextBlock Text="1  Origen" FontSize="12" /></Border>
+            <TextBlock Text="›" Margin="8,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+            <Border x:Name="Step2Chip" Style="{StaticResource Chip}" Padding="12,4"><TextBlock Text="2  Vista previa" FontSize="12" /></Border>
+            <TextBlock Text="›" Margin="8,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+            <Border x:Name="Step3Chip" Style="{StaticResource Chip}" Padding="12,4"><TextBlock Text="3  Resultado" FontSize="12" /></Border>
+        </StackPanel>
+
+        <!-- PASO 1: ORIGEN -->
+        <ScrollViewer x:Name="SourceStep" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Importar desde Contraseñas de Apple" Style="{StaticResource Text.Title}" />
+                <TextBlock Style="{StaticResource Text.Body}" Margin="0,8,0,0" Foreground="{DynamicResource Brush.TextSecondary}"
+                           Text="Apple no permite que otras aplicaciones lean directamente las contraseñas del iPhone ni de iCloud. La forma oficial es exportarlas a un archivo con las herramientas de Apple e importarlo aquí. Al repetirlo, PassDesk solo añade las nuevas y te deja actualizar las que han cambiado." />
+
+                <Border x:Name="AutoDetectInfo" Style="{StaticResource InfoBar}" Margin="0,14,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE895;" VerticalAlignment="Top" Margin="0,2,10,0" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" FontSize="13"
+                                   Text="No hace falta que busques el archivo: en cuanto guardes la exportación en Escritorio, Descargas o Documentos, PassDesk la detectará y te enseñará la vista previa." />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="18,14" Margin="0,14,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE8EA;" />
+                            <TextBlock Text="Desde el iPhone (iOS 18.2 o posterior)" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Text.Body}" Margin="0,8,0,0" FontSize="13"
+                                   Text="1. Ajustes › Apps › Safari › Exportar (debajo de «Historial y datos de sitios web»).&#x0a;2. Deja marcada solo «Contraseñas» y pulsa «Guardar en Descargas».&#x0a;3. Pasa el archivo ZIP al PC sin pasar por la nube:&#x0a;    • LocalSend (gratuita y de código abierto, en el iPhone y en el PC): cifra la transferencia por tu Wi‑Fi y deja el archivo en Descargas.&#x0a;    • O un pendrive USB‑C conectado al iPhone.&#x0a;    • O descárgalo desde icloud.com › iCloud Drive › Descargas." />
+                        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,6,0,0" Text="Después, borra el ZIP del iPhone (Archivos › Descargas) y de «Eliminados recientemente». Evita enviarlo por correo o mensajería." />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="18,14" Margin="0,10,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE7F8;" />
+                            <TextBlock Text="Desde este PC con iCloud para Windows" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Text.Body}" Margin="0,8,0,0" FontSize="13"
+                                   Text="1. Abre «Contraseñas de iCloud» y desbloquéala.&#x0a;2. Pulsa el botón de selección múltiple, elige «Seleccionar todo» y después «Exportar contraseñas».&#x0a;3. Guarda el CSV en Escritorio, Descargas o Documentos (no en OneDrive)." />
+                        <Button x:Name="OpenICloudButton" Style="{StaticResource Button.Standard}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnOpenICloudPasswords"
+                                AutomationProperties.Name="Abrir Contraseñas de iCloud">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A7;" FontSize="13" />
+                                <TextBlock Text="Abrir Contraseñas de iCloud" Margin="8,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock x:Name="ICloudHint" Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
+                                   Text="Si iCloud para Windows no consigue conectar con tu cuenta de Apple, usa la opción del iPhone." />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="18,14" Margin="0,10,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE7F4;" />
+                            <TextBlock Text="Desde un Mac" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Text.Body}" Margin="0,8,0,0" FontSize="13"
+                                   Text="App Contraseñas › Archivo › Exportar todas las contraseñas a un archivo (CSV)." />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource InfoBar}" Background="{DynamicResource Brush.InfoBar.Warning}" Margin="0,16,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE7BA;" VerticalAlignment="Top" Margin="0,2,10,0" Foreground="{DynamicResource Brush.Warning}" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" FontSize="13"
+                                   Text="El archivo que exporta Apple NO está cifrado: cualquiera con acceso a él puede leer tus contraseñas. Impórtalo cuanto antes y elimínalo al terminar (PassDesk te ayudará en el último paso). PassDesk lee el archivo en memoria, no lo modifica y no lo envía a ningún sitio." />
+                    </Grid>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" Margin="0,18,0,4">
+                    <Button x:Name="ChooseFileButton" Style="{StaticResource Button.Accent}" MinHeight="36" Click="OnChooseFile" AutomationProperties.Name="Seleccionar archivo">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE8E5;" Foreground="{DynamicResource Brush.OnAccent}" FontSize="14" />
+                            <TextBlock Text="Seleccionar archivo CSV o ZIP…" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <ProgressBar x:Name="ReadingProgress" IsIndeterminate="True" Width="120" Height="3" Margin="16,0,0,0" Visibility="Collapsed" />
+                </StackPanel>
+                <Border x:Name="SourceErrorBar" Style="{StaticResource InfoBar}" Background="{DynamicResource Brush.InfoBar.Error}" Margin="0,10,0,0" Visibility="Collapsed">
+                    <TextBlock x:Name="SourceError" Style="{StaticResource Text.Body}" FontSize="13" />
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- PASO 2: VISTA PREVIA -->
+        <DockPanel x:Name="PreviewStep" Grid.Row="1" Visibility="Collapsed">
+            <StackPanel DockPanel.Dock="Top">
+                <TextBlock Text="Revisa lo que se va a importar" Style="{StaticResource Text.Title}" />
+                <TextBlock x:Name="PreviewSource" Style="{StaticResource Text.Caption}" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                <WrapPanel Margin="0,12,0,0">
+                    <Border Style="{StaticResource Chip}" Background="{DynamicResource Brush.InfoBar.Success}" Margin="0,0,8,6" Padding="10,4"><TextBlock x:Name="NewChip" FontSize="12" /></Border>
+                    <Border Style="{StaticResource Chip}" Margin="0,0,8,6" Padding="10,4"><TextBlock x:Name="DuplicateChip" FontSize="12" /></Border>
+                    <Border Style="{StaticResource Chip}" Background="{DynamicResource Brush.InfoBar.Warning}" Margin="0,0,8,6" Padding="10,4"><TextBlock x:Name="ConflictChip" FontSize="12" /></Border>
+                    <Border Style="{StaticResource Chip}" Background="{DynamicResource Brush.InfoBar.Error}" Margin="0,0,8,6" Padding="10,4"><TextBlock x:Name="InvalidChip" FontSize="12" /></Border>
+                </WrapPanel>
+                <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,8"
+                           Text="Por seguridad, la vista previa no muestra contraseñas, notas ni códigos de verificación." />
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <Border x:Name="WarningsBar" Style="{StaticResource InfoBar}" Background="{DynamicResource Brush.InfoBar.Warning}" Margin="0,0,0,8" Visibility="Collapsed">
+                    <TextBlock x:Name="WarningsText" Style="{StaticResource Text.Body}" FontSize="13" />
+                </Border>
+                <CheckBox x:Name="DeleteAfterImport" Margin="0,0,0,8" Visibility="Collapsed"
+                          Content="Eliminar de forma segura el archivo exportado al terminar (recomendado)" AutomationProperties.Name="Eliminar el archivo al terminar" />
+                <StackPanel x:Name="ConflictOptions" Visibility="Collapsed">
+                    <TextBlock Text="Cuando una cuenta ya existe con otra contraseña o nota:" Style="{StaticResource Text.Subtitle}" FontSize="14" Margin="0,0,0,6" />
+                    <RadioButton x:Name="ConflictSmart" GroupName="Conflicts" IsChecked="True" Margin="0,2"
+                                 Content="Actualizar solo lo que no has cambiado en PassDesk (recomendado: nunca pierde un cambio tuyo)" />
+                    <RadioButton x:Name="ConflictUpdate" GroupName="Conflicts" Margin="0,2" Content="Actualizar siempre con los datos importados" />
+                    <RadioButton x:Name="ConflictKeepBoth" GroupName="Conflicts" Margin="0,2" Content="Conservar ambas versiones" />
+                    <RadioButton x:Name="ConflictSkip" GroupName="Conflicts" Margin="0,2" Content="No cambiar las cuentas existentes" />
+                    <TextBlock x:Name="ConflictPlan" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border Style="{StaticResource Card}">
+                <ListView x:Name="PreviewList" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource Brush.Text}"
+                          VirtualizingPanel.IsVirtualizing="True" AutomationProperties.Name="Vista previa">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Estado" Width="120" DisplayMemberBinding="{Binding Status}" />
+                            <GridViewColumn Header="Nombre" Width="160" DisplayMemberBinding="{Binding Title}" />
+                            <GridViewColumn Header="Sitio" Width="160" DisplayMemberBinding="{Binding Site}" />
+                            <GridViewColumn Header="Usuario" Width="160" DisplayMemberBinding="{Binding Username}" />
+                            <GridViewColumn Header="Contraseña" Width="100" DisplayMemberBinding="{Binding Password}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Border>
+        </DockPanel>
+
+        <!-- PASO 3: RESULTADO -->
+        <ScrollViewer x:Name="ResultStep" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource Brush.InfoBar.Success}">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE73E;" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.Success}" />
+                    </Border>
+                    <TextBlock Text="Importación completada" Style="{StaticResource Text.Title}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock x:Name="ResultSummary" Style="{StaticResource Text.Body}" Margin="0,14,0,0" />
+                <TextBlock Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
+                           Text="Los datos se han cifrado (AES-256-GCM + DPAPI) y guardado solo en este equipo. Los datos originales de Apple no se han modificado. Antes de aplicar los cambios se guardó un punto de recuperación: si algo no te convence, puedes volver atrás en Ajustes › Puntos de recuperación." />
+
+                <Border x:Name="DeleteSection" Style="{StaticResource Card}" Padding="18,16" Margin="0,22,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="DeleteGlyph" Style="{StaticResource Glyph}" Text="&#xE7BA;" Foreground="{DynamicResource Brush.Warning}" />
+                            <TextBlock x:Name="DeleteTitle" Text="Elimina ahora el archivo exportado" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="DeleteDescription" Style="{StaticResource Text.Body}" FontSize="13" Margin="0,8,0,0"
+                                   Text="El archivo sigue en el disco con todas tus contraseñas sin cifrar. PassDesk puede sobrescribirlo con datos aleatorios y eliminarlo (sin pasar por la Papelera)." />
+                        <TextBlock x:Name="DeletePath" Style="{StaticResource Text.Caption}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                        <Button x:Name="DeleteButton" Style="{StaticResource Button.Danger}" HorizontalAlignment="Left" Margin="0,12,0,0" MinHeight="34"
+                                Click="OnDeleteSource" AutomationProperties.Name="Eliminar archivo exportado">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Glyph}" Text="&#xE74D;" FontSize="14" Foreground="{DynamicResource Brush.Danger}" />
+                                <TextBlock Text="Eliminar el archivo de forma segura" Margin="8,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock x:Name="DeleteResult" Style="{StaticResource Text.Body}" FontSize="13" Margin="0,10,0,0" Visibility="Collapsed" />
+                        <TextBlock x:Name="DeleteWarnings" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Botones -->
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="FooterNote" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="BackButton" Style="{StaticResource Button.Standard}" Content="Atrás" MinWidth="96" Margin="0,0,8,0" Click="OnBack" Visibility="Collapsed" />
+                <Button x:Name="CancelButton" Style="{StaticResource Button.Standard}" Content="Cancelar" MinWidth="96" Margin="0,0,8,0" Click="OnCancel" IsCancel="True" />
+                <Button x:Name="PrimaryButton" Style="{StaticResource Button.Accent}" Content="Importar" MinWidth="140" Click="OnPrimary" Visibility="Collapsed"
+                        AutomationProperties.Name="Confirmar importación" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

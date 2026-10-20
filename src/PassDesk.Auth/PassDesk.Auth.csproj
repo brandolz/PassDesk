@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Módulo de autenticación: sesión de bóveda, bloqueo, desbloqueo, limitación de intentos e inactividad. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PassDesk.Core\PassDesk.Core.csproj" />
+    <ProjectReference Include="..\PassDesk.Crypto\PassDesk.Crypto.csproj" />
+    <ProjectReference Include="..\PassDesk.Storage\PassDesk.Storage.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PassDesk.Tests" />
+  </ItemGroup>
+</Project>

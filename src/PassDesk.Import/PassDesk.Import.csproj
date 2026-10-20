@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Módulo de importación y sincronización: lectores de exportaciones de Apple, duplicados y fuentes futuras. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PassDesk.Core\PassDesk.Core.csproj" />
+    <ProjectReference Include="..\PassDesk.Crypto\PassDesk.Crypto.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PassDesk.Tests" />
+  </ItemGroup>
+</Project>

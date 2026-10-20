@@ -1,0 +1,13 @@
+# Compilación
+bin/
+obj/
+dist/
+*.user
+.vs/
+
+# Nunca versionar datos de contraseñas ni exportaciones
+*.csv
+*.pdv
+*.pdv.bak
+*.pdbackup
+Passwords*.zip

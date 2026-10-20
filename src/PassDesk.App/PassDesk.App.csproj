@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Interfaz de escritorio WPF para Windows 11 (tema Fluent, Windows Hello, DPAPI). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>PassDesk</AssemblyName>
+    <RootNamespace>PassDesk.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\PassDesk.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- WPF0001: la API ThemeMode (tema Fluent de Windows 11) está marcada como experimental en .NET 9/10. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PassDesk.Crypto\PassDesk.Crypto.csproj" />
+    <ProjectReference Include="..\PassDesk.Core\PassDesk.Core.csproj" />
+    <ProjectReference Include="..\PassDesk.Storage\PassDesk.Storage.csproj" />
+    <ProjectReference Include="..\PassDesk.Auth\PassDesk.Auth.csproj" />
+    <ProjectReference Include="..\PassDesk.Import\PassDesk.Import.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\PassDesk.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Herramienta de capturas con datos ficticios (tools/PassDesk.UiSnapshots). -->
+    <InternalsVisibleTo Include="PassDesk.UiSnapshots" />
+    <InternalsVisibleTo Include="PassDesk.Tests" />
+  </ItemGroup>
+
+</Project>

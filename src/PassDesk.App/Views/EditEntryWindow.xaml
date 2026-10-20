@@ -1,0 +1,51 @@
+<Window x:Class="PassDesk.App.Views.EditEntryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Credencial"
+        Width="560" SizeToContent="Height" MinHeight="400" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Brush.Window}" Foreground="{DynamicResource Brush.Text}"
+        FontFamily="{StaticResource Font.Text}" FontSize="14" UseLayoutRounding="True">
+    <StackPanel Margin="28,24,28,22">
+        <TextBlock x:Name="Heading" Text="Nueva credencial" Style="{StaticResource Text.Title}" />
+
+        <TextBlock Text="Nombre del servicio *" Style="{StaticResource Text.FieldLabel}" Margin="0,18,0,3" />
+        <TextBox x:Name="TitleBox" MinHeight="34" AutomationProperties.Name="Nombre del servicio" />
+
+        <TextBlock Text="Sitio web" Style="{StaticResource Text.FieldLabel}" Margin="0,12,0,3" />
+        <TextBox x:Name="UrlBox" MinHeight="34" AutomationProperties.Name="Sitio web" />
+
+        <TextBlock Text="Usuario o correo electrónico" Style="{StaticResource Text.FieldLabel}" Margin="0,12,0,3" />
+        <TextBox x:Name="UsernameBox" MinHeight="34" AutomationProperties.Name="Usuario" />
+
+        <TextBlock Text="Contraseña *" Style="{StaticResource Text.FieldLabel}" Margin="0,12,0,3" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <PasswordBox x:Name="PasswordInput" MinHeight="34" AutomationProperties.Name="Contraseña" />
+            <TextBox x:Name="PasswordVisible" MinHeight="34" FontFamily="{StaticResource Font.Mono}" Visibility="Collapsed" AutomationProperties.Name="Contraseña visible" />
+            <Button x:Name="RevealButton" Grid.Column="1" Style="{StaticResource Button.Icon}" Content="&#xE890;" Margin="6,0,0,0" ToolTip="Mostrar u ocultar" Click="OnToggleReveal" />
+            <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Content="&#xE8D7;" ToolTip="Generar contraseña segura" Click="OnGenerate" AutomationProperties.Name="Generar contraseña" />
+        </Grid>
+
+        <TextBlock Text="Categoría" Style="{StaticResource Text.FieldLabel}" Margin="0,12,0,3" />
+        <ComboBox x:Name="CategoryBox" MinHeight="34" DisplayMemberPath="Name" AutomationProperties.Name="Categoría" />
+
+        <TextBlock Text="Notas" Style="{StaticResource Text.FieldLabel}" Margin="0,12,0,3" />
+        <TextBox x:Name="NotesBox" MinHeight="70" MaxHeight="160" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Notas" />
+
+        <Border Style="{StaticResource InfoBar}" Margin="0,16,0,0">
+            <TextBlock x:Name="InfoText" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text}"
+                       Text="Los cambios solo afectan a la copia cifrada de PassDesk. Si cambias la contraseña de un servicio, actualízala también en Contraseñas de Apple para que el iPhone siga funcionando." />
+        </Border>
+        <TextBlock x:Name="ErrorText" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}" Margin="0,10,0,0" Visibility="Collapsed" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Style="{StaticResource Button.Standard}" Content="Cancelar" MinWidth="96" IsCancel="True" />
+            <Button Style="{StaticResource Button.Accent}" Content="Guardar" MinWidth="110" Margin="8,0,0,0" IsDefault="True" Click="OnSave" AutomationProperties.Name="Guardar" />
+        </StackPanel>
+    </StackPanel>
+</Window>

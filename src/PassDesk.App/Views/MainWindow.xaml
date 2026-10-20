@@ -1,0 +1,515 @@
+<Window x:Class="PassDesk.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:PassDesk.App.Views"
+        x:Name="Root"
+        Title="PassDesk"
+        Width="1180" Height="760" MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Brush.Window}"
+        Foreground="{DynamicResource Brush.Text}"
+        FontFamily="{StaticResource Font.Text}" FontSize="14"
+        Icon="pack://application:,,,/PassDesk;component/Assets/PassDesk.ico"
+        UseLayoutRounding="True">
+    <Window.InputBindings>
+        <KeyBinding Gesture="Ctrl+L" Command="{Binding LockCommand}" />
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding AddCommand}" />
+        <KeyBinding Gesture="Ctrl+I" Command="{Binding ImportCommand}" />
+        <KeyBinding Gesture="Ctrl+G" Command="{Binding GeneratorCommand}" />
+        <KeyBinding Gesture="Ctrl+B" Command="{Binding CopyUsernameCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding CopyPasswordCommand}" />
+        <KeyBinding Gesture="Ctrl+U" Command="{Binding OpenWebsiteCommand}" />
+        <KeyBinding Gesture="Ctrl+E" Command="{Binding EditCommand}" />
+        <KeyBinding Gesture="Ctrl+H" Command="{Binding ToggleRevealCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <!-- ===================== CONTENIDO (solo con la bóveda desbloqueada) ===================== -->
+        <Grid x:Name="MainContent" Visibility="{Binding IsUnlocked, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="SidebarColumn" Width="236" />
+                <ColumnDefinition Width="2*" MinWidth="280" />
+                <ColumnDefinition Width="3*" MinWidth="320" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Barra lateral -->
+            <DockPanel Grid.Column="0" Margin="0,8,0,4">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="18,6,12,18">
+                    <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource Brush.Accent}">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE72E;" FontSize="14" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.OnAccent}" />
+                    </Border>
+                    <TextBlock Text="PassDesk" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" VerticalAlignment="Center"
+                               Visibility="{Binding IsSidebarExpanded, ElementName=Root, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding ImportCommand}" HorizontalContentAlignment="Left" Margin="4,1" Padding="12,8"
+                            ToolTip="Importar las contraseñas nuevas o cambiadas desde Contraseñas de Apple (Ctrl+I)" AutomationProperties.Name="Importar">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE895;" />
+                            <TextBlock Text="Actualizar desde Apple" Margin="12,0,0,0" Visibility="{Binding IsSidebarExpanded, ElementName=Root, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding GeneratorCommand}" HorizontalContentAlignment="Left" Margin="4,1" Padding="12,8"
+                            ToolTip="Generador de contraseñas (Ctrl+G)" AutomationProperties.Name="Generador">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE8D7;" />
+                            <TextBlock Text="Generador" Margin="12,0,0,0" Visibility="{Binding IsSidebarExpanded, ElementName=Root, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding SettingsCommand}" HorizontalContentAlignment="Left" Margin="4,1" Padding="12,8"
+                            ToolTip="Ajustes" AutomationProperties.Name="Ajustes">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE713;" />
+                            <TextBlock Text="Ajustes" Margin="12,0,0,0" Visibility="{Binding IsSidebarExpanded, ElementName=Root, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding LockCommand}" HorizontalContentAlignment="Left" Margin="4,1" Padding="12,8"
+                            ToolTip="Bloquear ahora (Ctrl+L)" AutomationProperties.Name="Bloquear">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE72E;" />
+                            <TextBlock Text="Bloquear" Margin="12,0,0,0" Visibility="{Binding IsSidebarExpanded, ElementName=Root, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <ListBox x:Name="CategoryList" Style="{StaticResource ListBox.Plain}" ItemContainerStyle="{StaticResource ListBoxItem.Nav}"
+                         ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
+                         AutomationProperties.Name="Categorías">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ToolTip="{Binding Name}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Glyph}" Text="{Binding Glyph}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="12,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Count}" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}"
+                                           Visibility="{Binding IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Lista de cuentas -->
+            <Border Grid.Column="1" Margin="0,8,6,0" Background="{DynamicResource Brush.Pane}" BorderBrush="{DynamicResource Brush.Stroke}" BorderThickness="1" CornerRadius="8">
+                <DockPanel>
+                    <!-- Aviso: exportación de Apple detectada -->
+                    <Border DockPanel.Dock="Top" Style="{StaticResource InfoBar}" Background="{DynamicResource Brush.InfoBar.Success}" Margin="12,12,12,0" Padding="12,8"
+                            Visibility="{Binding HasDetectedExport, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding DetectedExportText}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.Accent}" Content="Importar" MinHeight="28" Padding="12,3" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    Command="{Binding ImportDetectedCommand}" AutomationProperties.Name="Importar exportación detectada" />
+                            <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Width="28" Height="28" FontSize="10" Content="&#xE711;" Margin="4,0,0,0"
+                                    Command="{Binding DismissDetectedCommand}" ToolTip="Ignorar" VerticalAlignment="Center" AutomationProperties.Name="Ignorar exportación detectada" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Aviso: hace tiempo que no se actualiza -->
+                    <Border DockPanel.Dock="Top" Style="{StaticResource InfoBar}" Margin="12,12,12,0" Padding="12,8"
+                            Visibility="{Binding ShowUpdateReminder, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding UpdateReminderText}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.Standard}" Content="Actualizar" MinHeight="28" Padding="12,3" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    Command="{Binding ImportCommand}" />
+                            <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Width="28" Height="28" FontSize="10" Content="&#xE711;" Margin="4,0,0,0"
+                                    Command="{Binding DismissReminderCommand}" ToolTip="Recordármelo más tarde" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Border DockPanel.Dock="Top" Margin="12,12,12,10" Height="38" CornerRadius="6"
+                            Background="{DynamicResource Brush.Input}" BorderBrush="{DynamicResource Brush.StrokeStrong}" BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="14" Margin="12,0,8,0" Foreground="{DynamicResource Brush.TextSecondary}" />
+                            <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource TextBox.Bare}"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Buscar" PreviewKeyDown="OnSearchPreviewKeyDown" />
+                            <TextBlock Grid.Column="1" Text="{Binding SearchPlaceholder}" IsHitTestVisible="False" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Brush.TextTertiary}" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding HasSearch, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Width="30" Height="30" Margin="0,0,3,0" FontSize="10" Content="&#xE711;"
+                                    Command="{Binding ClearSearchCommand}" ToolTip="Borrar búsqueda (Esc)" AutomationProperties.Name="Borrar búsqueda"
+                                    Visibility="{Binding HasSearch, Converter={StaticResource BoolToVisibility}}" />
+                        </Grid>
+                    </Border>
+
+                    <Grid DockPanel.Dock="Top" Margin="16,0,12,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ListHeader}" Style="{StaticResource Text.Subtitle}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding CountText}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" DisplayMemberPath="Name"
+                                  MinWidth="150" MaxWidth="210" VerticalAlignment="Center" ToolTip="Ordenar" AutomationProperties.Name="Ordenar" />
+                        <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Content="&#xE710;" Margin="6,0,0,0"
+                                Command="{Binding AddCommand}" ToolTip="{Binding AddToolTip}" AutomationProperties.Name="Añadir" />
+                    </Grid>
+
+                    <Grid>
+                    <!-- Credenciales -->
+                    <Grid Visibility="{Binding IsDocumentsView, Converter={StaticResource InverseBoolToVisibility}}">
+                        <ListBox x:Name="EntryList" Style="{StaticResource ListBox.Plain}" ItemContainerStyle="{StaticResource ListBoxItem.Entry}"
+                                 ItemsSource="{Binding VisibleEntries}" SelectedItem="{Binding SelectedEntry}" Padding="0,0,0,8"
+                                 AutomationProperties.Name="Credenciales">
+                            <ListBox.InputBindings>
+                                <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyPasswordCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding CopyPasswordCommand}" />
+                                <KeyBinding Key="Delete" Command="{Binding DeleteCommand}" />
+                            </ListBox.InputBindings>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid AutomationProperties.Name="{Binding Title}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource Monogram}" Background="{Binding MonogramBackground}">
+                                            <TextBlock Text="{Binding Letter}" Foreground="{Binding MonogramForeground}" FontSize="15" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" MaxWidth="300"
+                                    Visibility="{Binding IsVaultEmpty, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE8B5;" FontSize="36" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                            <TextBlock Text="Todavía no hay credenciales" Style="{StaticResource Text.Subtitle}" HorizontalAlignment="Center" Margin="0,14,0,6" />
+                            <TextBlock Style="{StaticResource Text.Caption}" TextAlignment="Center"
+                                       Text="Importa la exportación oficial de Contraseñas de Apple o añade una cuenta manualmente." />
+                            <Button Style="{StaticResource Button.Accent}" Content="Importar desde Apple…" Margin="0,16,0,0" Command="{Binding ImportCommand}" />
+                            <Button Style="{StaticResource Button.Subtle}" Content="Añadir manualmente" Margin="0,6,0,0" Command="{Binding AddCommand}" />
+                        </StackPanel>
+
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" MaxWidth="280"
+                                    Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="32" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                            <TextBlock Text="Sin resultados" Style="{StaticResource Text.Subtitle}" HorizontalAlignment="Center" Margin="0,12,0,4" />
+                            <TextBlock Style="{StaticResource Text.Caption}" TextAlignment="Center" Text="Prueba con otro nombre, dominio o usuario." />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Documentos cifrados (admite arrastrar y soltar archivos) -->
+                    <Grid Visibility="{Binding IsDocumentsView, Converter={StaticResource BoolToVisibility}}" Background="Transparent"
+                          AllowDrop="True" DragOver="OnDocumentsDragOver" Drop="OnDocumentsDrop">
+                        <ListBox x:Name="DocumentList" Style="{StaticResource ListBox.Plain}" ItemContainerStyle="{StaticResource ListBoxItem.Entry}"
+                                 ItemsSource="{Binding VisibleDocuments}" SelectedItem="{Binding SelectedDocument}" Padding="0,0,0,8"
+                                 AutomationProperties.Name="Documentos">
+                            <ListBox.InputBindings>
+                                <KeyBinding Key="Delete" Command="{Binding DeleteDocumentCommand}" />
+                            </ListBox.InputBindings>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid AutomationProperties.Name="{Binding Title}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource Monogram}" Background="{DynamicResource Brush.AccentSubtle}">
+                                            <TextBlock Style="{StaticResource Glyph}" Text="{Binding Glyph}" FontSize="15" HorizontalAlignment="Center"
+                                                       Foreground="{DynamicResource Brush.AccentText}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" MaxWidth="310"
+                                    Visibility="{Binding IsDocumentsEmpty, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" FontSize="36" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                            <TextBlock Text="Todavía no hay documentos" Style="{StaticResource Text.Subtitle}" HorizontalAlignment="Center" Margin="0,14,0,6" />
+                            <TextBlock Style="{StaticResource Text.Caption}" TextAlignment="Center"
+                                       Text="Guarda aquí el DNI, el pasaporte u otros archivos del iPhone: quedan cifrados junto a tus contraseñas. Envíalos al PC con LocalSend y añádelos desde Descargas, o arrástralos aquí." />
+                            <Button Style="{StaticResource Button.Accent}" Content="Añadir documentos…" Margin="0,16,0,0" Command="{Binding AddDocumentsCommand}" />
+                        </StackPanel>
+
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" MaxWidth="280"
+                                    Visibility="{Binding HasNoDocumentResults, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="32" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                            <TextBlock Text="Sin resultados" Style="{StaticResource Text.Subtitle}" HorizontalAlignment="Center" Margin="0,12,0,4" />
+                            <TextBlock Style="{StaticResource Text.Caption}" TextAlignment="Center" Text="Prueba con otro nombre de documento." />
+                        </StackPanel>
+                    </Grid>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <!-- Detalle -->
+            <Border Grid.Column="2" Margin="0,8,8,0" Style="{StaticResource Card}">
+                <Grid>
+                <!-- Detalle de credencial -->
+                <Grid Visibility="{Binding IsDocumentsView, Converter={StaticResource InverseBoolToVisibility}}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300"
+                                Visibility="{Binding Detail.HasEntry, Converter={StaticResource InverseBoolToVisibility}}">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE8D7;" FontSize="40" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                        <TextBlock Text="Selecciona una cuenta" Style="{StaticResource Text.Subtitle}" HorizontalAlignment="Center" Margin="0,14,0,4" />
+                        <TextBlock Style="{StaticResource Text.Caption}" TextAlignment="Center" Text="Busca una credencial y elígela para ver o copiar sus datos." />
+                    </StackPanel>
+
+                    <ScrollViewer x:Name="DetailScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  Visibility="{Binding Detail.HasEntry, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel x:Name="DetailPanel" Margin="28,24,28,24" DataContext="{Binding Detail}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="56" Height="56" CornerRadius="12" Background="{Binding MonogramBackground}">
+                                    <TextBlock Text="{Binding Letter}" Foreground="{Binding MonogramForeground}" FontSize="24" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="16,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" AutomationProperties.Name="Título" />
+                                    <Border Style="{StaticResource Chip}" Margin="0,6,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource Glyph}" Text="{Binding CategoryGlyph}" FontSize="11" />
+                                            <TextBlock Text="{Binding CategoryName}" FontSize="12" Margin="6,0,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                                    <Button Style="{StaticResource Button.Icon}" Content="&#xE70F;" ToolTip="Editar (Ctrl+E)" AutomationProperties.Name="Editar"
+                                            Command="{Binding DataContext.EditCommand, ElementName=Root}" />
+                                    <Button Style="{StaticResource Button.Icon}" Content="&#xE74D;" ToolTip="Eliminar de PassDesk" AutomationProperties.Name="Eliminar"
+                                            Command="{Binding DataContext.DeleteCommand, ElementName=Root}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.CardAlt}" Margin="0,24,0,0">
+                                <StackPanel>
+                                    <!-- Usuario -->
+                                    <Grid Margin="16,12,10,12" Visibility="{Binding HasUsername, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Usuario o correo" Style="{StaticResource Text.FieldLabel}" />
+                                            <TextBlock Text="{Binding Username}" FontSize="15" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Usuario" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource Button.Icon}" Content="&#xE8C8;" ToolTip="Copiar usuario (Ctrl+B)" AutomationProperties.Name="Copiar usuario"
+                                                Command="{Binding DataContext.CopyUsernameCommand, ElementName=Root}" />
+                                    </Grid>
+                                    <Border Height="1" Background="{DynamicResource Brush.Stroke}" Visibility="{Binding HasUsername, Converter={StaticResource BoolToVisibility}}" />
+
+                                    <!-- Contraseña -->
+                                    <Grid Margin="16,12,10,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Contraseña" Style="{StaticResource Text.FieldLabel}" />
+                                            <TextBlock Text="{Binding PasswordText}" FontFamily="{StaticResource Font.Mono}" FontSize="15" TextWrapping="Wrap"
+                                                       AutomationProperties.Name="Contraseña" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource Button.Icon}" Content="{Binding RevealGlyph}" ToolTip="{Binding RevealToolTip}"
+                                                AutomationProperties.Name="Mostrar u ocultar contraseña"
+                                                Command="{Binding DataContext.ToggleRevealCommand, ElementName=Root}" />
+                                        <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Content="&#xE8C8;" ToolTip="Copiar contraseña (Ctrl+Mayús+C)"
+                                                AutomationProperties.Name="Copiar contraseña"
+                                                Command="{Binding DataContext.CopyPasswordCommand, ElementName=Root}" />
+                                    </Grid>
+
+                                    <!-- Código de verificación -->
+                                    <Border Height="1" Background="{DynamicResource Brush.Stroke}" Visibility="{Binding HasCode, Converter={StaticResource BoolToVisibility}}" />
+                                    <Grid Margin="16,12,10,12" Visibility="{Binding HasCode, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Código de verificación" Style="{StaticResource Text.FieldLabel}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding CodeDisplay}" FontFamily="{StaticResource Font.Mono}" FontSize="18" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding CodeSecondsText}" Style="{StaticResource Text.Caption}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <ProgressBar Value="{Binding CodeProgress, Mode=OneWay}" Maximum="1" Height="3" Width="120" Margin="0,6,0,0" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource Button.Icon}" Content="&#xE8C8;" ToolTip="Copiar código" AutomationProperties.Name="Copiar código"
+                                                Command="{Binding DataContext.CopyCodeCommand, ElementName=Root}" />
+                                    </Grid>
+
+                                    <!-- Sitio web -->
+                                    <Border Height="1" Background="{DynamicResource Brush.Stroke}" Visibility="{Binding HasUrl, Converter={StaticResource BoolToVisibility}}" />
+                                    <Grid Margin="16,12,10,12" Visibility="{Binding HasUrl, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Sitio web" Style="{StaticResource Text.FieldLabel}" />
+                                            <TextBlock Text="{Binding Url}" Foreground="{DynamicResource Brush.AccentText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource Button.Icon}" Content="&#xE8A7;" ToolTip="Abrir en el navegador (Ctrl+U)"
+                                                AutomationProperties.Name="Abrir sitio web"
+                                                Command="{Binding DataContext.OpenWebsiteCommand, ElementName=Root}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Margin="0,20,0,0" Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Notas" Style="{StaticResource Text.FieldLabel}" />
+                                <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.CardAlt}" Padding="16,12">
+                                    <TextBox x:Name="NotesText" Text="{Binding Notes, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Style="{StaticResource TextBox.Bare}" AutomationProperties.Name="Notas" />
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Margin="2,20,0,0">
+                                <TextBlock Style="{StaticResource Text.Caption}"><Run Text="Modificada: " /><Run Text="{Binding ModifiedText, Mode=OneWay}" /></TextBlock>
+                                <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0"><Run Text="Creada: " /><Run Text="{Binding CreatedText, Mode=OneWay}" /></TextBlock>
+                                <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0"><Run Text="Importada: " /><Run Text="{Binding ImportedText, Mode=OneWay}" /></TextBlock>
+                                <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0" Text="{Binding SourceText}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Visor de documentos -->
+                <Grid Visibility="{Binding IsDocumentsView, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="320"
+                                Visibility="{Binding DocumentDetail.HasDocument, Converter={StaticResource InverseBoolToVisibility}}">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" FontSize="40" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                        <TextBlock Text="Selecciona un documento" Style="{StaticResource Text.Subtitle}" HorizontalAlignment="Center" Margin="0,14,0,4" />
+                        <TextBlock Style="{StaticResource Text.Caption}" TextAlignment="Center"
+                                   Text="Los documentos se guardan cifrados con AES-256 y solo se descifran en memoria para mostrarlos." />
+                    </StackPanel>
+
+                    <DockPanel x:Name="DocumentPanel" Margin="24,20,24,20" DataContext="{Binding DocumentDetail}"
+                               Visibility="{Binding HasDocument, Converter={StaticResource BoolToVisibility}}">
+                        <Grid DockPanel.Dock="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="48" Height="48" CornerRadius="10" Background="{DynamicResource Brush.AccentSubtle}">
+                                <TextBlock Style="{StaticResource Glyph}" Text="{Binding Glyph}" FontSize="22" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.AccentText}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" FontSize="20" AutomationProperties.Name="Documento" />
+                                <TextBlock Text="{Binding Details}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding AddedText}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                                <Button Style="{StaticResource Button.Icon}" Content="&#xE70F;" ToolTip="Cambiar nombre" AutomationProperties.Name="Cambiar nombre del documento"
+                                        Command="{Binding DataContext.RenameDocumentCommand, ElementName=Root}" />
+                                <Button Style="{StaticResource Button.Icon}" Content="&#xEDE1;" ToolTip="Exportar una copia sin cifrar" AutomationProperties.Name="Exportar documento"
+                                        Command="{Binding DataContext.ExportDocumentCommand, ElementName=Root}" />
+                                <Button Style="{StaticResource Button.Icon}" Content="&#xE74D;" ToolTip="Eliminar de PassDesk" AutomationProperties.Name="Eliminar documento"
+                                        Command="{Binding DataContext.DeleteDocumentCommand, ElementName=Root}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.CardAlt}" Margin="0,16,0,0">
+                            <Grid>
+                                <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top" Margin="12"
+                                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
+
+                                <Image Source="{Binding Image}" Stretch="Uniform" StretchDirection="DownOnly" Margin="12" RenderOptions.BitmapScalingMode="HighQuality"
+                                       Visibility="{Binding IsImage, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Vista previa de la imagen" />
+
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                              Visibility="{Binding IsPdf, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding PdfPages}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="12,12,12,0" BorderBrush="{DynamicResource Brush.Stroke}" BorderThickness="1" Background="White">
+                                                        <Image Source="{Binding}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="{Binding PdfInfo}" Style="{StaticResource Text.Caption}" Margin="12,8,12,12" />
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <TextBox x:Name="DocumentText" Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" BorderThickness="0"
+                                         Background="Transparent" FontFamily="{StaticResource Font.Mono}" FontSize="13" Margin="8"
+                                         VerticalScrollBarVisibility="Auto" Visibility="{Binding IsText, Converter={StaticResource BoolToVisibility}}" />
+
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="320" Margin="16"
+                                            Visibility="{Binding IsUnsupported, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE7C3;" FontSize="34" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                                    <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Caption}" TextAlignment="Center" Margin="0,12,0,0" />
+                                    <Button Style="{StaticResource Button.Standard}" Content="Exportar…" HorizontalAlignment="Center" Margin="0,12,0,0"
+                                            Command="{Binding DataContext.ExportDocumentCommand, ElementName=Root}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DockPanel>
+                </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Barra de estado -->
+            <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="18,7,18,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE72E;" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" />
+                <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" Margin="6,0,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis">
+                    <Run Text="Cifrado local · AES-256 + DPAPI  ·  " /><Run Text="{Binding TotalText, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{Binding LastImportText, Mode=OneWay}" />
+                </TextBlock>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" ToolTip="{Binding SyncExplanation}" Margin="12,0,0,0">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE946;" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Margin="6,0,0,0" TextWrapping="NoWrap" Text="{Binding SyncStatusText}" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- ===================== BLOQUEO / CONFIGURACIÓN INICIAL ===================== -->
+        <views:LockView x:Name="LockScreen" Visibility="{Binding IsLocked, Converter={StaticResource BoolToVisibility}}" />
+
+        <!-- ===================== NOTIFICACIÓN BREVE (nunca contiene secretos) ===================== -->
+        <Border x:Name="Toast" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,48" CornerRadius="8" Padding="16,10"
+                Background="{DynamicResource Brush.Toast}" Visibility="Collapsed" Opacity="0" IsHitTestVisible="False">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="ToastGlyph" Style="{StaticResource Glyph}" FontSize="14" Foreground="{DynamicResource Brush.OnToast}" />
+                <TextBlock x:Name="ToastText" Foreground="{DynamicResource Brush.OnToast}" Margin="10,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

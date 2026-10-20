@@ -1,0 +1,18 @@
+<Project>
+  <!-- Configuración común para todos los proyectos de PassDesk. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable</WarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <Version>1.0.0</Version>
+    <Product>PassDesk</Product>
+    <Company>PassDesk</Company>
+    <Copyright>Uso personal. No afiliado a Apple Inc.</Copyright>
+    <NeutralLanguage>es-ES</NeutralLanguage>
+    <SatelliteResourceLanguages>es</SatelliteResourceLanguages>
+    <!-- Sin telemetría de compilación ni de ejecución. -->
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+  </PropertyGroup>
+</Project>

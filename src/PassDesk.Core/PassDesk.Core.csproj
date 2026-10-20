@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Módulo de dominio: modelo de credenciales, búsqueda, categorías, generador, TOTP, portapapeles y registro seguro. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PassDesk.Crypto\PassDesk.Crypto.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PassDesk.Tests" />
+  </ItemGroup>
+</Project>

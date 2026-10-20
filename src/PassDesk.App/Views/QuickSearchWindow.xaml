@@ -1,0 +1,74 @@
+<Window x:Class="PassDesk.App.Views.QuickSearchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PassDesk · Búsqueda rápida"
+        Width="640" SizeToContent="Height"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        WindowStartupLocation="Manual"
+        Background="{DynamicResource Brush.Card}" Foreground="{DynamicResource Brush.Text}"
+        BorderBrush="{DynamicResource Brush.StrokeStrong}" BorderThickness="1"
+        FontFamily="{StaticResource Font.Text}" FontSize="14" UseLayoutRounding="True">
+    <StackPanel>
+        <Grid Margin="18,14,14,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="18" Foreground="{DynamicResource Brush.TextSecondary}" />
+            <TextBox x:Name="Query" Grid.Column="1" Style="{StaticResource TextBox.Bare}" FontSize="18" Margin="12,0,8,0"
+                     PreviewKeyDown="OnQueryKeyDown" TextChanged="OnQueryChanged" AutomationProperties.Name="Búsqueda rápida" />
+            <TextBlock x:Name="Placeholder" Grid.Column="1" Margin="14,0,0,0" FontSize="18" VerticalAlignment="Center" IsHitTestVisible="False"
+                       Foreground="{DynamicResource Brush.TextTertiary}" Text="Buscar en PassDesk…" />
+            <Border Grid.Column="2" Style="{StaticResource Chip}" VerticalAlignment="Center">
+                <TextBlock Text="Esc" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
+            </Border>
+        </Grid>
+        <Border Height="1" Background="{DynamicResource Brush.Stroke}" />
+
+        <StackPanel x:Name="LockedPanel" Margin="18,14,18,16" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE72E;" />
+                <TextBlock x:Name="LockedTitle" Text="PassDesk está bloqueado" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+            </StackPanel>
+            <Grid x:Name="LockedInputs" Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <PasswordBox x:Name="UnlockBox" MinHeight="34" KeyDown="OnUnlockKeyDown" AutomationProperties.Name="Contraseña maestra" />
+                <Button Grid.Column="1" Style="{StaticResource Button.Accent}" Content="Desbloquear" Margin="8,0,0,0" Click="OnUnlock" />
+                <Button x:Name="HelloButton" Grid.Column="2" Style="{StaticResource Button.Icon}" Content="&#xE928;" Margin="6,0,0,0"
+                        ToolTip="Usar Windows Hello" Click="OnHello" Visibility="Collapsed" AutomationProperties.Name="Usar Windows Hello" />
+            </Grid>
+            <TextBlock x:Name="LockedMessage" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" Visibility="Collapsed" />
+        </StackPanel>
+
+        <ListBox x:Name="Results" Style="{StaticResource ListBox.Plain}" ItemContainerStyle="{StaticResource ListBoxItem.Entry}" MaxHeight="400" Margin="0,6"
+                 MouseDoubleClick="OnResultDoubleClick" AutomationProperties.Name="Resultados">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource Monogram}" Width="30" Height="30" CornerRadius="7" Background="{Binding MonogramBackground}">
+                            <TextBlock Text="{Binding Letter}" Foreground="{Binding MonogramForeground}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock x:Name="EmptyText" Style="{StaticResource Text.Caption}" Margin="18,10,18,12" Visibility="Collapsed" Text="Sin resultados." />
+
+        <Border Height="1" Background="{DynamicResource Brush.Stroke}" />
+        <TextBlock x:Name="Hint" Style="{StaticResource Text.Caption}" Margin="18,8,18,10" TextWrapping="Wrap"
+                   Text="Intro: copiar contraseña · Mayús+Intro: copiar usuario · Ctrl+O: abrir web · Ctrl+Intro: abrir en PassDesk" />
+    </StackPanel>
+</Window>

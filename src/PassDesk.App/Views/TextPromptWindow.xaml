@@ -1,0 +1,18 @@
+<Window x:Class="PassDesk.App.Views.TextPromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PassDesk"
+        Width="420" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Brush.Window}" Foreground="{DynamicResource Brush.Text}"
+        FontFamily="{StaticResource Font.Text}" FontSize="14" UseLayoutRounding="True">
+    <StackPanel Margin="28,24,28,22">
+        <TextBlock x:Name="Heading" Style="{StaticResource Text.Title}" FontSize="20" />
+        <TextBlock x:Name="FieldLabel" Style="{StaticResource Text.FieldLabel}" Margin="0,16,0,3" />
+        <TextBox x:Name="Input" MinHeight="34" AutomationProperties.Name="Texto" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Style="{StaticResource Button.Standard}" Content="Cancelar" MinWidth="96" IsCancel="True" />
+            <Button Style="{StaticResource Button.Accent}" Content="Aceptar" MinWidth="110" Margin="8,0,0,0" IsDefault="True" Click="OnAccept" />
+        </StackPanel>
+    </StackPanel>
+</Window>

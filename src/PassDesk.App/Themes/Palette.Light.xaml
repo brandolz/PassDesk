@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Paleta clara inspirada en los colores de Windows 11. -->
+    <SolidColorBrush x:Key="Brush.Window" Color="#F3F3F3" />
+    <SolidColorBrush x:Key="Brush.Pane" Color="#F9F9F9" />
+    <SolidColorBrush x:Key="Brush.Card" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.CardAlt" Color="#F7F7F7" />
+    <SolidColorBrush x:Key="Brush.Stroke" Color="#E5E5E5" />
+    <SolidColorBrush x:Key="Brush.StrokeStrong" Color="#CCCCCC" />
+    <SolidColorBrush x:Key="Brush.Text" Color="#1B1B1B" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#5C5C5C" />
+    <SolidColorBrush x:Key="Brush.TextTertiary" Color="#8A8A8A" />
+    <SolidColorBrush x:Key="Brush.Accent" Color="#005FB8" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="#196EBF" />
+    <SolidColorBrush x:Key="Brush.AccentPressed" Color="#3183CA" />
+    <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.AccentSubtle" Color="#E3EEF9" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#005A9E" />
+    <SolidColorBrush x:Key="Brush.Hover" Color="#0A000000" />
+    <SolidColorBrush x:Key="Brush.Pressed" Color="#05000000" />
+    <SolidColorBrush x:Key="Brush.Selected" Color="#0F000000" />
+    <SolidColorBrush x:Key="Brush.Input" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#C42B1C" />
+    <SolidColorBrush x:Key="Brush.Success" Color="#0F7B0F" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#9D5D00" />
+    <SolidColorBrush x:Key="Brush.InfoBar.Info" Color="#EAF2FB" />
+    <SolidColorBrush x:Key="Brush.InfoBar.Success" Color="#DFF6DD" />
+    <SolidColorBrush x:Key="Brush.InfoBar.Warning" Color="#FFF4CE" />
+    <SolidColorBrush x:Key="Brush.InfoBar.Error" Color="#FDE7E9" />
+    <SolidColorBrush x:Key="Brush.Toast" Color="#2C2C2C" />
+    <SolidColorBrush x:Key="Brush.OnToast" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Chip" Color="#EFEFEF" />
+</ResourceDictionary>
