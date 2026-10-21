@@ -68,8 +68,7 @@ public class KdfHardeningTests
         Assert.Equal(KdfAlgorithm.Argon2id64MiB, upgraded.Header.Kdf.Algorithm);
 
         // Misma clave de datos (comparada en tiempo constante) y se abre con la contraseña bajo la cabecera nueva.
-        var field = typeof(VaultKeyring).GetField("_dataKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        Assert.True(((ProtectedSecret)field.GetValue(legacy)!).ContentEquals((ProtectedSecret)field.GetValue(upgraded)!));
+        Assert.True(Fake.DataKey(legacy).ContentEquals(Fake.DataKey(upgraded)));
 
         byte[] envelope = upgraded.Seal(Fake.Utf8(Fake.Secret));
         using var reopened = VaultKeyring.Unlock(VaultKeyring.ReadHeader(envelope), Fake.MasterPassword);
@@ -149,7 +148,7 @@ public class KdfHardeningTests
     public void Argon2id_failure_never_blocks_unlocking_a_legacy_vault(string failure)
     {
         var clock = new FakeClock();
-        var store = LegacyVault(clock);
+        var store = Fake.NewVault(clock, Fake.Entry("Antigua", "https://antigua.example", "u", Fake.Secret));
         using (var session = new VaultSession(store, new InMemorySecurityStateStore(), clock))
         {
             // Como si libsodium no cargara (antivirus, AppLocker…): la re-envoltura con Argon2id falla.
@@ -174,7 +173,7 @@ public class KdfHardeningTests
     public void Fatal_error_during_the_upgrade_leaves_nothing_decrypted_and_the_vault_still_opens()
     {
         var clock = new FakeClock();
-        var store = LegacyVault(clock);
+        var store = Fake.NewVault(clock);
         using var session = new VaultSession(store, new InMemorySecurityStateStore(), clock);
         var normal = session.RewrapKeyring;
         VaultKeyring? previous = null;
@@ -186,8 +185,7 @@ public class KdfHardeningTests
 
         Assert.Throws<OutOfMemoryException>(() => session.Unlock(Fake.MasterPassword));
         Assert.Equal(VaultState.Locked, session.State);
-        var dataKey = typeof(VaultKeyring).GetField("_dataKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        Assert.True(((ProtectedSecret)dataKey.GetValue(previous!)!).IsDisposed);
+        Assert.True(Fake.DataKey(previous!).IsDisposed);
 
         session.RewrapKeyring = normal;
         Assert.True(session.Unlock(Fake.MasterPassword).Succeeded);
@@ -219,16 +217,6 @@ public class KdfHardeningTests
     {
         session.Lock(LockReason.Manual);
         return session.Unlock(password);
-    }
-
-    /// <summary>Bóveda creada con una versión anterior (PBKDF2) con una entrada.</summary>
-    private static InMemoryVaultStore LegacyVault(FakeClock clock)
-    {
-        var store = new InMemoryVaultStore();
-        using var legacy = new VaultSession(store, new InMemorySecurityStateStore(), clock, Fake.FastIterations);
-        legacy.CreateVault(Fake.MasterPassword);
-        legacy.AddEntry(Fake.Entry("Antigua", "https://antigua.example", "u", Fake.Secret));
-        return store;
     }
 
     /// <summary>Excepciones con las que NSec informa de que no puede cargar libsodium (y la que las envuelve).</summary>
@@ -860,7 +848,7 @@ public class ThrottleStateTests
         using var temp = new TempDirectory();
         var security = new FileSecurityStateStore(temp.File("security.json"));
         var clock = new FakeClock();
-        var store = NewVault(clock);
+        var store = Fake.NewVault(clock);
         security.Save(new UnlockThrottleState(2, null));
         byte[] valid = File.ReadAllBytes(security.FilePath);
         File.WriteAllBytes(security.FilePath, damage switch
@@ -892,7 +880,7 @@ public class ThrottleStateTests
     public void Impossible_saved_values_are_treated_as_damage()
     {
         var clock = new FakeClock();
-        var store = NewVault(clock);
+        var store = Fake.NewVault(clock);
         foreach (var impossible in new[] { new UnlockThrottleState(-3, null), new UnlockThrottleState(0, clock.UtcNow.AddDays(30)) })
         {
             var security = new InMemorySecurityStateStore { State = impossible };
@@ -908,7 +896,7 @@ public class ThrottleStateTests
     {
         var clock = new FakeClock();
         var security = new InMemorySecurityStateStore { State = new UnlockThrottleState(int.MaxValue, null) };
-        using var session = new VaultSession(NewVault(clock), security, clock, Fake.FastIterations);
+        using var session = new VaultSession(Fake.NewVault(clock), security, clock, Fake.FastIterations);
 
         Assert.Equal(UnlockThrottle.MaxDelay, session.Unlock(Fake.OtherMasterPassword).RetryAfter);
         Assert.Equal(int.MaxValue, security.State.FailedAttempts);
@@ -923,7 +911,7 @@ public class ThrottleStateTests
         Assert.Equal(new UnlockThrottleState(4, new DateTimeOffset(2026, 10, 15, 9, 0, 5, TimeSpan.Zero)), security.Load());
 
         var clock = new FakeClock();
-        using var session = new VaultSession(NewVault(clock), security, clock, Fake.FastIterations);
+        using var session = new VaultSession(Fake.NewVault(clock), security, clock, Fake.FastIterations);
         Assert.Equal(UnlockStatus.Throttled, session.Unlock(Fake.MasterPassword).Status); // se respeta la espera guardada
         clock.Advance(TimeSpan.FromSeconds(5));
         Assert.True(session.Unlock(Fake.MasterPassword).Succeeded);
@@ -969,13 +957,5 @@ public class ThrottleStateTests
 
         // Con una espera ya guardada (al reiniciar, o con el contador dañado) la contraseña ni se comprueba.
         Assert.Equal("Demasiados intentos: espera 300 s.", LockView.RetryCountdownText(UnlockStatus.Throttled, wait));
-    }
-
-    private static InMemoryVaultStore NewVault(FakeClock clock)
-    {
-        var store = new InMemoryVaultStore();
-        using var session = new VaultSession(store, new InMemorySecurityStateStore(), clock, Fake.FastIterations);
-        session.CreateVault(Fake.MasterPassword);
-        return store;
     }
 }

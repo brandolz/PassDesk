@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using PassDesk.Auth;
 using PassDesk.Core.Model;
@@ -44,6 +45,24 @@ internal static class Fake
         clock = new FakeClock();
         return new VaultSession(store, security ?? new InMemorySecurityStateStore(), clock, FastIterations);
     }
+
+    /// <summary>Bóveda PBKDF2 (como las de versiones anteriores) con <see cref="MasterPassword"/> y las entradas indicadas.</summary>
+    public static InMemoryVaultStore NewVault(FakeClock clock, params CredentialEntry[] entries)
+    {
+        var store = new InMemoryVaultStore();
+        using var session = new VaultSession(store, new InMemorySecurityStateStore(), clock, FastIterations);
+        session.CreateVault(MasterPassword);
+        foreach (var entry in entries)
+        {
+            session.AddEntry(entry);
+        }
+
+        return store;
+    }
+
+    /// <summary>Clave de datos (privada) de un llavero, para comprobar que es la misma o que se ha borrado.</summary>
+    public static ProtectedSecret DataKey(VaultKeyring keyring) =>
+        (ProtectedSecret)typeof(VaultKeyring).GetField("_dataKey", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(keyring)!;
 
     public static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);
 
