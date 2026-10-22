@@ -233,7 +233,9 @@ public class PipeServerTests
     [Fact]
     public async Task Concurrent_clients_are_all_served()
     {
-        await using var fixture = new PipeFixture();
+        // Límite por encima de los 20 clientes: aquí se prueba la concurrencia; el rechazo por exceso lo cubre
+        // Too_many_simultaneous_connections_are_told_to_retry (en Windows, el cliente rechazado ve la tubería rota al escribir).
+        await using var fixture = new PipeFixture(limits: new PipeServerLimits { MaxConcurrentConnections = 20 });
         var tasks = Enumerable.Range(0, 20).Select(async _ =>
         {
             using var reply = await fixture.RequestAsync("""{"v":1,"type":"status"}""");
@@ -439,8 +441,15 @@ public class NativeHostTests
                 await server.WaitForConnectionAsync();
                 var (_, request) = await NativeMessageFraming.ReadAsync(server, 4096, CancellationToken.None);
                 request?.Dispose();
-                await server.WriteAsync(PipeFixture.Frame(payload));
-                await server.FlushAsync();
+                try
+                {
+                    await server.WriteAsync(PipeFixture.Frame(payload));
+                    await server.FlushAsync();
+                }
+                catch (IOException)
+                {
+                    // El conector cierra sin leer una respuesta demasiado grande; en Windows la escritura ve la tubería rota.
+                }
             });
             var options = new NativeHostOptions { AllowedCallers = [PipeFixture.Extension], PipeName = pipe };
             var (_, reply, _) = await RunHost(options, [PipeFixture.Extension], PipeFixture.Frame("""{"v":1,"type":"status"}"""));

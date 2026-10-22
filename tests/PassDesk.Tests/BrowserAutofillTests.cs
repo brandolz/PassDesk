@@ -178,7 +178,7 @@ public class BrowserAutofillTests
         var lockTask = Task.Run(() => session.Lock(LockReason.Manual));
         await Task.Delay(300);
         Assert.False(lockTask.IsCompleted, "el bloqueo espera a que termine la lectura");
-        Assert.Equal(VaultState.Unlocked, session.State);
+        // Aquí no se consulta session.State: usa el mismo cerrojo y esperaría a la lectura, que a su vez espera a «release».
 
         release.Set();
         Assert.Equal(2, await read);
