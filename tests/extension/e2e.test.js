@@ -340,6 +340,18 @@ test('marco del mismo origen: sí se puede usar', async () => {
   assert.equal(await inner.locator('#pass').inputValue(), user.password);
 });
 
+test('el acceso se concede por sitio, pero el origen completo (con puerto) decide qué cuentas salen', async () => {
+  const first = await open(U('uno.example.test'));
+  await enableSite(first);
+  await first.close();
+  const page = await open(U('uno.example.test', '/login', ':8443'));
+  await page.click('#user');
+  await suggestionHost(page);
+  const text = await waitForSuggestionText(page, /dani@uno\.example\.test/);
+  assert.match(text, /https:\/\/uno\.example\.test:8443/);
+  assert.doesNotMatch(text, /ana@uno\.example\.test/, 'la cuenta del puerto 443 no se ofrece en el 8443');
+});
+
 test('dominios engañosos, puertos y HTTP: no se ofrece ninguna cuenta', async () => {
   const cases = [
     ['https://uno.example.test.evil.test/login', 'dominio que contiene el nombre'],

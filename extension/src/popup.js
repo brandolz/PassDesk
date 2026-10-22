@@ -1,6 +1,6 @@
 // Ventana de la extensión: muestra las cuentas de PassDesk que corresponden a la pestaña actual y rellena solo la que se
 // elige. Con el permiso temporal activeTab no necesita acceso permanente a ningún sitio.
-import { httpsOrigin } from './shared.js';
+import { httpsOrigin, sitePattern } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 const status = $('status');
@@ -49,7 +49,7 @@ function renderSiteToggle(origin, enabled) {
   } else {
     actions.append(button('Mostrar sugerencias al enfocar los campos de este sitio', async () => {
       // El permiso solo se puede pedir desde un gesto del usuario, es decir, desde este clic.
-      const granted = await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => false);
+      const granted = await chrome.permissions.request({ origins: [sitePattern(origin)] }).catch(() => false);
       if (!granted) {
         setStatus('No se concedió el permiso para este sitio.');
         return;

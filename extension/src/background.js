@@ -1,7 +1,7 @@
 // Service worker de PassDesk. Es el único componente que habla con el conector local (Native Messaging) y el único que
 // decide el origen de una solicitud: lo deduce del remitente del mensaje que le da el navegador (sender), nunca de lo que
 // diga el contenido de la página. No guarda nada: ni credenciales ni estado, y nunca escribe en la consola.
-import { HOST_NAME, PROTOCOL_VERSION, httpsOrigin, isGuid, isScope, isToken, newRequestId, normalizeReply } from './shared.js';
+import { HOST_NAME, PROTOCOL_VERSION, httpsOrigin, isGuid, isScope, isToken, newRequestId, normalizeReply, siteKey, sitePattern } from './shared.js';
 
 const LIST_TIMEOUT_MS = 8000;
 const FILL_TIMEOUT_MS = 50000;
@@ -97,6 +97,10 @@ async function fillDocument({ tabId, documentId, origin }, msg) {
 async function topDocument(tabId) {
   try {
     const tab = await chrome.tabs.get(tabId);
+    if (typeof tab.url !== 'string') {
+      // Sin activeTab ni acceso al sitio, el navegador no revela la dirección de la pestaña.
+      return { error: 'no_access' };
+    }
     const origin = httpsOrigin(tab.url);
     if (!origin) {
       return { error: 'unsupported_origin' };
@@ -124,12 +128,12 @@ async function enabledSites() {
 }
 
 async function enableSite(origin) {
-  const pattern = `${origin}/*`;
+  const pattern = sitePattern(origin);
   if (!(await chrome.permissions.contains({ origins: [pattern] }))) {
     return { ok: false, error: 'permission' };
   }
-  const id = SITE_PREFIX + origin;
-  if ((await enabledSites()).includes(origin)) {
+  const id = SITE_PREFIX + siteKey(origin);
+  if ((await enabledSites()).includes(siteKey(origin))) {
     return { ok: true };
   }
   await chrome.scripting.registerContentScripts([{
@@ -146,12 +150,12 @@ async function enableSite(origin) {
 
 async function disableSite(origin) {
   try {
-    await chrome.scripting.unregisterContentScripts({ ids: [SITE_PREFIX + origin] });
+    await chrome.scripting.unregisterContentScripts({ ids: [SITE_PREFIX + siteKey(origin)] });
   } catch {
     // No estaba registrado.
   }
   try {
-    await chrome.permissions.remove({ origins: [`${origin}/*`] });
+    await chrome.permissions.remove({ origins: [sitePattern(origin)] });
   } catch {
     // Permiso ya retirado.
   }
@@ -190,7 +194,7 @@ async function handlePopup(msg) {
         return { ok: false, error: doc.error };
       }
       const sites = await enabledSites();
-      const base = { origin: doc.origin, scope: doc.scope, siteEnabled: sites.includes(doc.origin) };
+      const base = { origin: doc.origin, scope: doc.scope, siteEnabled: sites.includes(siteKey(doc.origin)) };
       if (!doc.scope) {
         return { ok: true, state: 'no_form', ...base, matches: [] };
       }

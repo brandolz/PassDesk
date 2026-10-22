@@ -23,9 +23,10 @@ PassDesk puede rellenar tu usuario y contraseña en Chrome, Edge y Brave **cuand
 
 | Componente | Cómo se ha comprobado |
 |---|---|
-| Lógica de orígenes, protocolo, intermediario, tubería y conector | Pruebas automáticas multiplataforma (`tests/PassDesk.Browser.Tests`), ejecutadas en Linux con .NET 10. |
-| Extensión real + conector real + tubería real + bóveda **ficticia** | Pruebas de extremo a extremo (`tests/extension`) con **Chromium 141 en Linux** (modo headless). |
-| Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector, scripts `.ps1` | **Compilado**, pero **no ejecutado**: el entorno de desarrollo no era Windows. Las pruebas están escritas (`tests/PassDesk.Tests/BrowserAutofillTests.cs`); ejecútalas en tu equipo (ver «Probarlo en tu equipo»). |
+| Lógica de orígenes, protocolo, intermediario, tubería y conector | **300 pruebas** multiplataforma (`tests/PassDesk.Browser.Tests`), ejecutadas en Linux con .NET 10 (todas pasan). Se comprobó además, introduciendo errores a propósito (mutaciones), que fallan si se rompe cada control importante. |
+| Extensión real + conector real + tubería real + bóveda **ficticia** | **26 pruebas** de extremo a extremo (`tests/extension`) con **Chromium 141 en Linux** (modo headless), ejecutadas y todas pasan. |
+| Permiso temporal `activeTab` al pulsar el icono de la barra de herramientas | **No probado**: el modo headless no puede pulsar el icono. Las pruebas conceden a la extensión acceso a `*.test` en una copia del manifiesto para ejercitar el mismo código. El comportamiento se apoya en la documentación de Chrome sobre `activeTab`. |
+| Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | **Compilado**, pero **no ejecutado en Windows**. Hay 27 casos de prueba nuevos (`tests/PassDesk.Tests/BrowserAutofillTests.cs`) que necesitan Windows; también están sin ejecutar las 236 pruebas anteriores en este entorno. Los scripts `.ps1` se comprobaron con PowerShell 7 en Linux (sintaxis, identificador de extensión, manifiesto y rutas con espacios y acentos, contra un registro simulado), no con el registro real de Windows. |
 | Chrome estable, Edge, Brave **en Windows** | **No probados.** Se consideran compatibles porque comparten Chromium, Manifest V3 y Native Messaging, pero no se ha verificado. |
 | Firefox, Safari | No compatibles (otra API de extensiones). |
 
@@ -205,7 +206,7 @@ misma carpeta de datos, porque ambos quieren la misma tubería.)
 
 ### Probarlo en tu equipo (lista de comprobación)
 
-1. `dotnet test` de los dos proyectos .NET: deben pasar **todas** (las 236 de siempre + las nuevas).
+1. `dotnet test PassDesk.slnx`: deben pasar **todas** (las 236 de siempre, las 27 nuevas de integración y las 300 multiplataforma).
 2. `scripts\publish.ps1`, `scripts\install.ps1`, `scripts\install-browser.ps1`; cargar la extensión; activar la casilla.
 3. Con una cuenta de prueba (no la real): rellenar desde el icono; con *Pedir confirmación*, comprobar que aparece la
    ventana, que `Cancelar` no rellena y que `Permitir` sí.

@@ -39,6 +39,16 @@ export function httpsOrigin(text) {
   }
 }
 
+// Los patrones de coincidencia de las extensiones no llevan puerto: el acceso se concede al sitio (host), y PassDesk sigue
+// comprobando el origen completo (con puerto) en cada solicitud.
+export function siteKey(origin) {
+  return new URL(origin).hostname;
+}
+
+export function sitePattern(origin) {
+  return `https://${siteKey(origin)}/*`;
+}
+
 const clip = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
 
 // Convierte una respuesta del conector en un objeto simple y acotado, o en un error genérico.
@@ -75,11 +85,14 @@ export function normalizeReply(reply, requestId, expectedOrigin) {
       });
     }
   }
-  if (typeof reply.username === 'string') {
-    result.username = clip(reply.username, 2048);
-  }
-  if (typeof reply.password === 'string') {
-    result.password = clip(reply.password, 2048);
+  // Un secreto nunca se recorta: o se entrega entero o no se entrega.
+  for (const field of ['username', 'password']) {
+    if (reply[field] !== undefined) {
+      if (typeof reply[field] !== 'string' || reply[field].length > 4096) {
+        return { ok: false, error: 'bad_reply' };
+      }
+      result[field] = reply[field];
+    }
   }
   return result;
 }

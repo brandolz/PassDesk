@@ -209,7 +209,8 @@ async function createEnvironment({ patchHostPermissions = true } = {}) {
   };
   const mainDir = copyExtension('ext-main', (m) => {
     if (patchHostPermissions) {
-      m.host_permissions = ['https://*.test/*'];
+      // También http://*.test para poder comprobar que la extensión rechaza páginas HTTP aunque tenga acceso a ellas.
+      m.host_permissions = ['https://*.test/*', 'http://*.test/*'];
     }
   });
   const rogueKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
