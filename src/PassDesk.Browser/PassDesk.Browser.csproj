@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Integración con navegadores: origen web, protocolo de Native Messaging, intermediario de relleno y tubería local.
+       Multiplataforma (net10.0, sin dependencias de Windows) para poder probarla también fuera de Windows. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PassDesk.Browser.Tests" />
+    <InternalsVisibleTo Include="PassDesk.Tests" />
+  </ItemGroup>
+</Project>
