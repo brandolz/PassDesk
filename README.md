@@ -67,6 +67,10 @@ Fuentes: [Exportar contraseñas de iCloud en Windows](https://support.apple.com/
 - **Copias de seguridad cifradas** (`.pdbackup`, incluyen los documentos) para cambiar de equipo, **puntos de
   recuperación automáticos** antes de cada importación o restauración, y **cambio de contraseña maestra**.
 - **Modo claro/oscuro** (o según Windows), diseño Fluent de Windows 11 y adaptación a ventanas estrechas.
+- **Autorrelleno en Chrome, Edge y Brave (opcional, desactivado por defecto):** una extensión de navegador rellena usuario
+  y contraseña solo cuando eliges la cuenta, solo en páginas HTTPS que coinciden con la cuenta guardada y con PassDesk
+  desbloqueado, y pide tu confirmación en PassDesk. Todo es local (Native Messaging + tubería local), sin servidores.
+  Instalación, permisos, limitaciones y qué se ha probado de verdad: [docs/NAVEGADOR.md](docs/NAVEGADOR.md).
 
 ### Atajos de teclado
 
@@ -124,6 +128,10 @@ Detalle completo en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 - **Capturas y pantalla compartida:** la ventana se excluye de capturas, grabaciones y Teams/Zoom (opción activable).
 - **Sin red ni telemetría:** la app no hace ninguna conexión (los iconos de servicio se generan localmente).
 - **Registros sin secretos:** solo códigos de evento y contadores; verificado con pruebas automáticas.
+- **Autorrelleno en navegadores (opcional):** sin HTTP ni WebSocket; con la casilla activada, una tubería local solo del
+  usuario actual y solo para el conector instalado; solo la extensión autorizada; origen comprobado contra la bóveda (nunca
+  por texto, sin HTTP ni marcos de otro origen); fichas de un solo uso; sin entregar nada con la bóveda bloqueada;
+  confirmación en PassDesk. Detalle: [docs/NAVEGADOR-AMENAZAS.md](docs/NAVEGADOR-AMENAZAS.md).
 
 ---
 
@@ -149,6 +157,9 @@ powershell -ExecutionPolicy Bypass -File scripts\install.ps1            # añade
 # Desinstalar (conserva tus datos cifrados salvo que añadas -RemoveData)
 powershell -ExecutionPolicy Bypass -File scripts\uninstall.ps1
 ```
+
+Para el autorrelleno en el navegador (opcional) ver [docs/NAVEGADOR.md](docs/NAVEGADOR.md): `scripts\install-browser.ps1`
+registra el conector y la extensión se carga desde `%LOCALAPPDATA%\Programs\PassDesk\browser\extension`.
 
 El programa se instala en `%LOCALAPPDATA%\Programs\PassDesk` y los datos cifrados viven aparte, en
 `%LOCALAPPDATA%\PassDesk` (no se borran al actualizar o desinstalar). Antes de actualizar o desinstalar, cierra PassDesk
@@ -268,9 +279,15 @@ PassDesk.slnx
 ├─ src/PassDesk.Core      Dominio: credenciales, documentos, búsqueda, categorías, generador, TOTP, portapapeles, registro sin secretos
 ├─ src/PassDesk.Storage   Almacenamiento: bóveda y documentos (DPAPI + escritura atómica), copias, ajustes, registro en disco
 ├─ src/PassDesk.Auth      Autenticación y servicios: sesión, bloqueo/desbloqueo, Windows Hello, intentos, inactividad, documentos
+├─ src/PassDesk.Browser   Autorrelleno en navegadores (multiplataforma): origen web, protocolo, intermediario, tubería local, conector
+├─ src/PassDesk.NativeHost  Conector de Native Messaging (un proceso por solicitud; no descifra nada)
 ├─ src/PassDesk.Import    Importación: lector CSV/ZIP de Apple, detección de exportaciones, duplicados, borrado seguro
 ├─ src/PassDesk.App       Interfaz WPF (.NET 10, tema Fluent de Windows 11) y servicios de Windows
-├─ tests/PassDesk.Tests   236 pruebas automáticas (xUnit) con datos ficticios
+├─ extension/             Extensión de navegador (Manifest V3) para Chrome, Edge y Brave
+├─ tests/PassDesk.Tests   236 pruebas automáticas (xUnit) con datos ficticios + las de integración del autorrelleno
+├─ tests/PassDesk.Browser.Tests  Pruebas multiplataforma del autorrelleno (xUnit): orígenes, protocolo, intermediario, tubería, conector
+├─ tests/extension        Pruebas de extremo a extremo con Chromium real, extensión real, conector real y bóveda ficticia
+├─ tools/PassDesk.AutofillSandbox  Prototipo del autorrelleno con una bóveda ficticia en memoria (no toca la real)
 └─ tools/PassDesk.UiSnapshots  Herramienta de desarrollo: capturas de la interfaz con datos ficticios
 ```
 
@@ -289,6 +306,14 @@ auditada con la que se calcula Argon2id; xUnit solo en las pruebas.
 $env:DOTNET_ROOT="$env:LOCALAPPDATA\Microsoft\dotnet"
 & "$env:DOTNET_ROOT\dotnet.exe" test tests\PassDesk.Tests\PassDesk.Tests.csproj
 ```
+
+```powershell
+dotnet test tests\PassDesk.Browser.Tests\PassDesk.Browser.Tests.csproj   # autorrelleno: lógica multiplataforma
+cd tests\extension; npm install; npm test                                # autorrelleno: Chromium + extensión + conector reales
+```
+
+Las de la integración del autorrelleno con la bóveda real están en `tests\PassDesk.Tests\BrowserAutofillTests.cs`; su
+resultado y qué se ha ejecutado de verdad (y qué no) se explica en [docs/NAVEGADOR.md](docs/NAVEGADOR.md#estado-de-las-pruebas-qué-se-ha-probado-de-verdad).
 
 Cubren: cifrado/descifrado y manipulación (integridad GCM), contraseña incorrecta, DPAPI, bloqueo y desbloqueo,
 limitación de intentos (también tras reiniciar), Windows Hello simulado, bloqueo automático por inactividad,
@@ -381,6 +406,11 @@ datos ficticios sin tocar la bóveda real. Las capturas se regeneran con:
   PassDesk siga marcada.
 - Con PassDesk en la bandeja, una exportación de Apple detectada no avisa (no hay botón en la barra de tareas que
   parpadee): la vista previa se abre al volver a la ventana.
+
+- **Autorrelleno en navegadores:** no probado todavía en Chrome, Edge ni Brave sobre Windows (sí con Chromium en Linux y
+  credenciales ficticias); no rellena en páginas HTTP, marcos de otro origen ni formularios de registro; exige PassDesk en
+  ejecución y desbloqueado; la extensión se carga sin empaquetar (no está en ninguna tienda). Lista completa en
+  [docs/NAVEGADOR.md](docs/NAVEGADOR.md#limitaciones-conocidas).
 
 Los cuatro puntos de riesgo bajo que la auditoría dejó pendientes ya están corregidos (ver
 [docs/SEGURIDAD.md](docs/SEGURIDAD.md#corregido-tras-la-auditoría)). Sigue habiendo un límite: quien controle tu sesión

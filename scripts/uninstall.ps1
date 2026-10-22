@@ -23,6 +23,11 @@ foreach ($link in @(
     if (Test-Path $link) { Remove-Item $link -Force }
 }
 
+# Registro del conector de navegadores (extensión de PassDesk), si se instaló con install-browser.ps1. El programa se borra
+# más abajo; sin esto, el navegador seguiría apuntando a un conector que ya no existe. No toca los datos.
+$browserScript = Join-Path $PSScriptRoot "uninstall-browser.ps1"
+if (Test-Path $browserScript) { & $browserScript -InstallDir $InstallDir }
+
 # Entrada de «Iniciar con Windows», si se activó en Ajustes.
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "PassDesk" -ErrorAction SilentlyContinue
 

@@ -52,3 +52,6 @@ if ($DesktopShortcut) {
 Write-Host "PassDesk instalado en $InstallDir" -ForegroundColor Green
 if (-not $NoStartMenu) { Write-Host "Ábrelo desde el menú Inicio buscando «PassDesk»." }
 Write-Host "Datos cifrados: $(Join-Path $env:LOCALAPPDATA 'PassDesk')"
+if (Test-Path (Join-Path $InstallDir "PassDesk.NativeHost.exe")) {
+    Write-Host "Autorrelleno en el navegador (opcional): scripts\install-browser.ps1 y docs\NAVEGADOR.md"
+}

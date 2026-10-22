@@ -12,6 +12,8 @@ Este documento describe cómo protege PassDesk tus credenciales, qué amenazas c
 - Fugas por el portapapeles (historial `Win+V`, portapapeles en la nube, contenido olvidado).
 - Fugas en registros, mensajes de error o notificaciones.
 - Adivinar la contraseña maestra probando muchas veces en la propia app.
+- Páginas web que intentan obtener credenciales a través de la extensión del navegador, o que se hacen pasar por otro sitio
+  (si activas el autorrelleno, ver «Autorrelleno en navegadores»).
 
 **No puede proteger frente a** (ningún gestor de contraseñas puede):
 
@@ -192,6 +194,41 @@ recuperación»).
 - **Exportar** es la única forma de obtener el archivo sin cifrar, siempre por acción explícita y con aviso.
 - Eliminar un documento borra su archivo cifrado; sin la clave (que desaparece de la bóveda) ya no se puede descifrar.
 
+## Autorrelleno en navegadores (opcional)
+
+Desactivado por defecto. Detalle y modelo de amenazas: [NAVEGADOR.md](NAVEGADOR.md) y
+[NAVEGADOR-AMENAZAS.md](NAVEGADOR-AMENAZAS.md). Resumen:
+
+- **Sin servidor de red.** No hay HTTP ni WebSocket. Con la casilla activada, PassDesk abre una **tubería local con nombre**
+  accesible solo para el usuario actual (`CurrentUserOnly`, sin clientes remotos) y que solo admite al conector
+  `PassDesk.NativeHost.exe` instalado junto a `PassDesk.exe` (se comprueba la ruta del proceso cliente). Desactivada la casilla,
+  la tubería no existe. «PassDesk no abre puertos de red» sigue siendo cierto.
+- **PassDesk decide.** La extensión y el conector son un relé: no descifran nada, no guardan nada y no tienen operación alguna
+  para listar o exportar la bóveda. Reutilizan `VaultSession`; no hay segunda bóveda ni segunda autenticación, y la
+  integración **no puede desbloquear**: pedir el desbloqueo solo muestra la pantalla de bloqueo de siempre.
+- **Solo la extensión autorizada.** El navegador solo lanza el conector para la extensión del manifiesto
+  (`allowed_origins`); el conector exige además ese origen exacto, y valida cada mensaje (4 KiB, campos conocidos, tipos
+  exactos). PassDesk vuelve a validar todo.
+- **Sitio correcto.** Se compara el origen entero (HTTPS, host, puerto) con la URL guardada, nunca por texto
+  (`ejemplo.com.evil.test` ≠ `ejemplo.com`); sin HTTP, sin páginas internas del navegador, sin marcos de otro origen. Otro
+  subdominio solo si lo activas. El origen que da el navegador no basta: PassDesk entrega con una **ficha de un solo uso**
+  (60 s) ligada a la cuenta, al origen y al desbloqueo actual, y vuelve a comprobar el origen contra la bóveda al entregar.
+- **Bloqueo.** Con la bóveda bloqueada no se lista ni se rellena. La lectura de la contraseña se hace bajo el mismo cerrojo
+  que el bloqueo (`VaultSession.TryRead`); si se bloquea mientras se espera la confirmación, no se entrega (aunque se vuelva a
+  desbloquear). Al bloquear caducan todas las fichas.
+- **Confirmación del usuario.** Por defecto, cada relleno pide **Permitir** en una ventana de PassDesk (cuenta, usuario y
+  página; `Cancelar` por defecto; se cierra sola al bloquear). La extensión además solo rellena tras un clic o una tecla
+  reales sobre una cuenta concreta, nunca al cargar la página.
+- **Menos datos.** Solo se devuelve lo pedido: en un acceso en dos pasos, primero el usuario y después la contraseña. Las
+  listas llevan servicio y usuario, nunca contraseñas.
+- **Límites.** Peticiones limitadas por minuto, un relleno a la vez, cuatro conexiones, tiempos máximos, y bloqueo temporal
+  de los rellenos tras cinco fichas inválidas.
+- **Sin rastro.** El registro solo recibe códigos de evento y contadores (nunca sitios, cuentas ni URL); las respuestas con
+  contraseña se escriben en memoria fijada que se pone a cero; la extensión no usa consola ni almacenamiento del navegador, y
+  una prueba automática comprueba que las contraseñas no quedan en el perfil del navegador.
+- **Límites:** malware con tu usuario sigue fuera de alcance (puede simular clics o leer memoria); una página legítima
+  comprometida del mismo origen puede leer lo rellenado; las cadenas de JavaScript no se pueden borrar de memoria.
+
 ## Registros, errores y red
 
 - El registro (`%LOCALAPPDATA%\PassDesk\logs`, máx. ~1 MB) solo acepta **códigos de evento y contadores numéricos**.
@@ -200,7 +237,8 @@ recuperación»).
   con un secreto ficticio y verifica que no aparece ni en memoria ni en el archivo de registro.
 - Los errores mostrados al usuario son genéricos y no incluyen contenido de archivos.
 - Ante un error inesperado, PassDesk se bloquea y muestra un aviso genérico.
-- Sin telemetría, sin analítica y sin conexiones de red.
+- Sin telemetría, sin analítica y sin conexiones de red. (La tubería local del autorrelleno, si la activas, no es una
+  conexión de red: es un canal entre procesos del mismo usuario.)
 
 ## Importación
 

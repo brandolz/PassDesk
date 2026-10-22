@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PassDesk</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>PassDesk</h1>
+    <p id="site" class="site" aria-live="polite"></p>
+  </header>
+  <main>
+    <p id="status" role="status" aria-live="polite">Buscando cuentas…</p>
+    <ul id="accounts" class="accounts" aria-label="Cuentas para este sitio"></ul>
+    <div id="actions" class="actions"></div>
+  </main>
+  <footer>
+    <button id="close" type="button" class="secondary">Cancelar</button>
+    <p class="hint">Nada se rellena hasta que eliges una cuenta.</p>
+  </footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

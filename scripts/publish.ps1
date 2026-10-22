@@ -46,6 +46,8 @@ if (-not $SkipTests) {
     Write-Host "Ejecutando pruebas automáticas..." -ForegroundColor Cyan
     & $dotnet test (Join-Path $root "tests\PassDesk.Tests\PassDesk.Tests.csproj") -c Release
     if ($LASTEXITCODE -ne 0) { throw "Las pruebas han fallado; no se publica." }
+    & $dotnet test (Join-Path $root "tests\PassDesk.Browser.Tests\PassDesk.Browser.Tests.csproj") -c Release
+    if ($LASTEXITCODE -ne 0) { throw "Las pruebas de la integración con navegadores han fallado; no se publica." }
 }
 
 $target = Join-Path $Output "PassDesk"
@@ -58,6 +60,20 @@ Write-Host "Publicando ($Mode)..." -ForegroundColor Cyan
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none `
     -o $target
 if ($LASTEXITCODE -ne 0) { throw "La publicación ha fallado." }
+
+# Conector de Native Messaging (autorrelleno en navegadores): junto a PassDesk.exe, que es donde PassDesk espera encontrarlo.
+Write-Host "Publicando el conector del navegador..." -ForegroundColor Cyan
+& $dotnet publish (Join-Path $root "src\PassDesk.NativeHost\PassDesk.NativeHost.csproj") `
+    -c Release -r win-x64 --self-contained $selfContained `
+    -p:PublishSingleFile=true -p:DebugType=none `
+    -o $target
+if ($LASTEXITCODE -ne 0) { throw "La publicación del conector ha fallado." }
+
+# Extensión sin empaquetar (se carga desde esta carpeta en Chrome, Edge o Brave).
+$extensionTarget = Join-Path $target "browser\extension"
+New-Item -ItemType Directory -Force -Path $extensionTarget | Out-Null
+Copy-Item (Join-Path $root "extension\*") $extensionTarget -Recurse -Force
+Copy-Item (Join-Path $root "docs\NAVEGADOR.md") (Join-Path $target "browser") -ErrorAction SilentlyContinue
 
 Copy-Item (Join-Path $root "README.md") $target -ErrorAction SilentlyContinue
 # Para probadores (solo versión autocontenida): instrucciones y el instalador oficial de Visual C++ que necesita

@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\PassDesk.Storage\PassDesk.Storage.csproj" />
     <ProjectReference Include="..\..\src\PassDesk.Auth\PassDesk.Auth.csproj" />
     <ProjectReference Include="..\..\src\PassDesk.Import\PassDesk.Import.csproj" />
+    <ProjectReference Include="..\..\src\PassDesk.Browser\PassDesk.Browser.csproj" />
     <ProjectReference Include="..\..\src\PassDesk.App\PassDesk.App.csproj" />
   </ItemGroup>
 

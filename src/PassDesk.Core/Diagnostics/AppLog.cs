@@ -68,6 +68,17 @@ public enum LogEvent
     TrayIconFailed,
     StartupRegistrationChanged,
     StartupRegistrationFailed,
+    BrowserAutofillStarted,
+    BrowserAutofillStopped,
+    BrowserAutofillStartFailed,
+    BrowserAutofillListed,
+    BrowserAutofillFilled,
+    BrowserAutofillDenied,
+    BrowserAutofillRateLimited,
+    BrowserAutofillUnlockRequested,
+    BrowserAutofillBadRequest,
+    BrowserAutofillClientRejected,
+    BrowserAutofillFailed,
 }
 
 /// <summary>Contador numérico asociado a un evento (por ejemplo, número de registros importados).</summary>

@@ -2,15 +2,19 @@
   <Folder Name="/src/">
     <Project Path="src/PassDesk.App/PassDesk.App.csproj" />
     <Project Path="src/PassDesk.Auth/PassDesk.Auth.csproj" />
+    <Project Path="src/PassDesk.Browser/PassDesk.Browser.csproj" />
     <Project Path="src/PassDesk.Core/PassDesk.Core.csproj" />
     <Project Path="src/PassDesk.Crypto/PassDesk.Crypto.csproj" />
     <Project Path="src/PassDesk.Import/PassDesk.Import.csproj" />
+    <Project Path="src/PassDesk.NativeHost/PassDesk.NativeHost.csproj" />
     <Project Path="src/PassDesk.Storage/PassDesk.Storage.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PassDesk.Browser.Tests/PassDesk.Browser.Tests.csproj" />
     <Project Path="tests/PassDesk.Tests/PassDesk.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/PassDesk.AutofillSandbox/PassDesk.AutofillSandbox.csproj" />
     <Project Path="tools/PassDesk.UiSnapshots/PassDesk.UiSnapshots.csproj" />
   </Folder>
 </Solution>

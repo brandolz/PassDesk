@@ -43,6 +43,9 @@ public partial class App : Application
         var main = new MainWindow(_services);
         MainWindow = main;
         _singleInstance.ActivationRequested += (_, _) => Dispatcher.BeginInvoke(main.BringToFront);
+
+        // El navegador pide desbloquear: solo se muestra PassDesk; el usuario se autentica con los mecanismos de siempre.
+        _services.Autofill.UnlockRequested += (_, _) => main.BringToFront();
         main.ShowTrayIcon();
         if (startInTray)
         {

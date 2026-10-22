@@ -18,6 +18,9 @@ public sealed record PipeServerLimits
 
     /// <summary>Tiempo máximo para atender una solicitud (incluye la confirmación del usuario en PassDesk).</summary>
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(45);
+
+    /// <summary>Tiempo máximo para entregar la respuesta a un cliente que no la lee.</summary>
+    public TimeSpan ResponseWriteTimeout { get; init; } = TimeSpan.FromSeconds(10);
 }
 
 /// <summary>
@@ -224,16 +227,22 @@ public sealed class AutofillPipeServer : IAsyncDisposable
         }
     }
 
-    private static async Task TryWriteAsync(NamedPipeServerStream pipe, AutofillResult result, CancellationToken cancellationToken)
+    private async Task TryWriteAsync(NamedPipeServerStream pipe, AutofillResult result, CancellationToken cancellationToken)
     {
         using var payload = result.Serialize();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_limits.ResponseWriteTimeout);
         try
         {
-            await NativeMessageFraming.WriteAsync(pipe, payload.Memory, cancellationToken).ConfigureAwait(false);
+            await NativeMessageFraming.WriteAsync(pipe, payload.Memory, timeout.Token).ConfigureAwait(false);
         }
         catch (IOException)
         {
             // El cliente cerró antes de leer: el secreto se descarta al liberar el búfer.
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Un cliente que no lee no retiene la conexión.
         }
     }
 }

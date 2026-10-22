@@ -214,6 +214,28 @@ public sealed class VaultSession : IDisposable
         }
     }
 
+    /// <summary>
+    /// Ejecuta una lectura de las credenciales bajo el mismo cerrojo que el bloqueo: o la bóveda sigue desbloqueada durante
+    /// toda la lectura, o no se lee nada. Devuelve false, sin llamar a <paramref name="read"/>, si está bloqueada. Lo usa el
+    /// autorrelleno del navegador para que ninguna solicitud pueda obtener una contraseña después de bloquear.
+    /// <paramref name="read"/> debe ser breve y no puede conservar las entradas: se liberan al bloquear.
+    /// </summary>
+    public bool TryRead<T>(Func<IReadOnlyList<CredentialEntry>, T> read, out T? result)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        lock (_sync)
+        {
+            if (_state != VaultState.Unlocked || _document is null)
+            {
+                result = default;
+                return false;
+            }
+
+            result = read(_document.Entries);
+            return true;
+        }
+    }
+
     /// <summary>Instantánea de los documentos guardados (solo con la bóveda desbloqueada).</summary>
     public IReadOnlyList<SecureDocument> Documents
     {

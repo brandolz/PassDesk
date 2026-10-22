@@ -11,3 +11,5 @@ dist/
 *.pdv.bak
 *.pdbackup
 Passwords*.zip
+node_modules/
+tests/extension/.last-suggestion.png

@@ -326,24 +326,32 @@ public class BrokerTests
     }
 
     [Fact]
-    public async Task The_stored_url_is_checked_again_when_delivering()
+    public async Task Turning_subdomains_off_between_list_and_fill_denies_the_fill()
     {
-        // La URL de la credencial cambia entre el listado y el relleno (o la ficha apunta a otra cosa).
-        var id = _vault.Add("Cambiante", "https://cambiante.test", "c@cambiante.test", "clave-cambiante-ficticia");
-        using var broker = NewBroker();
-        var match = await FirstMatch(broker, "https://cambiante.test");
-        var request = new AutofillRequest(RequestType.Fill, null, Fake.Origin("https://cambiante.test"), match.Id, match.Token, FillScope.Both);
-
-        // Sin subdominios activados tras haber listado con ellos.
+        _vault.Add("Cambiante", "https://cambiante.test", "c@cambiante.test", "clave-cambiante-ficticia");
         _policy = new AutofillPolicy { AllowSubdomains = true };
+        using var broker = NewBroker();
         var related = await FirstMatch(broker, "https://sub.cambiante.test");
         Assert.Equal(OriginMatchKind.Related, related.Kind);
+
         _policy = new AutofillPolicy { AllowSubdomains = false };
         var (result, json) = await Run(broker, Requests.Fill("https://sub.cambiante.test", related));
         Assert.Equal(ErrorCodes.Denied, ErrorOf(result));
         Assert.DoesNotContain("clave-cambiante", json);
-        Assert.NotEqual(Guid.Empty, id);
-        Assert.NotNull(request);
+        Assert.Equal(0, _vault.ReadCalls);
+    }
+
+    [Fact]
+    public async Task The_stored_url_is_checked_again_at_the_moment_of_reading()
+    {
+        // La URL de la cuenta cambia entre mirar y leer (o el almacén se equivoca): la lectura debe rechazarla ella misma.
+        var vault = new ChangingUrlVault();
+        using var broker = new AutofillBroker(vault, () => new AutofillPolicy { RequireConfirmation = false }, _time, null, _unlock, _audit);
+        var match = await FirstMatch(broker, "https://ejemplo.test");
+        var (result, json) = await Run(broker, Requests.Fill("https://ejemplo.test", match));
+        Assert.Equal(ErrorCodes.NotFound, ErrorOf(result));
+        Assert.DoesNotContain(Fake.Password, json);
+        Assert.True(vault.ReadAttempted);
     }
 
     [Fact]
@@ -481,6 +489,23 @@ public class BrokerTests
     }
 
     [Fact]
+    public async Task A_confirmer_that_ignores_cancellation_cannot_hang_the_broker()
+    {
+        using var broker = new AutofillBroker(_vault, () => _policy, _time, new DeafConfirmer(), _unlock, _audit);
+        var match = await FirstMatch(broker, "https://ejemplo.test");
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        var pending = broker.HandleAsync(Requests.Fill("https://ejemplo.test", match), cts.Token);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, _vault.ReadCalls);
+
+        // Y el relleno queda libre para la siguiente solicitud (no se quedó la puerta cerrada).
+        _policy = new AutofillPolicy { RequireConfirmation = false };
+        var next = await FirstMatch(broker, "https://ejemplo.test");
+        (await Run(broker, Requests.Fill("https://ejemplo.test", next))).Result.Dispose();
+        Assert.Equal(1, _vault.ReadCalls);
+    }
+
+    [Fact]
     public async Task Only_one_fill_runs_at_a_time()
     {
         _confirmer.HoldAnswer = true;
@@ -558,6 +583,40 @@ public class BrokerTests
             Assert.Equal(ErrorCodes.Internal, ErrorOf(result));
             Assert.DoesNotContain(Fake.Password, json);
             Assert.DoesNotContain(Fake.Password, _audit.AsText());
+        }
+    }
+
+    /// <summary>Confirmador que no hace caso de la cancelación y nunca responde (por ejemplo, una ventana que no llegó a abrirse).</summary>
+    private sealed class DeafConfirmer : IFillConfirmer
+    {
+        public Task<bool> ConfirmAsync(FillConfirmation confirmation, CancellationToken cancellationToken) =>
+            new TaskCompletionSource<bool>().Task;
+    }
+
+    /// <summary>Muestra una URL que coincide, pero al leer la credencial su URL ya es otra.</summary>
+    private sealed class ChangingUrlVault : IAutofillVault
+    {
+        private readonly Guid _id = Guid.NewGuid();
+
+        public bool ReadAttempted { get; private set; }
+
+        public AutofillVaultState State => AutofillVaultState.Unlocked;
+
+        public event EventHandler? Locked
+        {
+            add { }
+            remove { }
+        }
+
+        public IReadOnlyList<AutofillEntryInfo> Snapshot() => [new(_id, "Ejemplo", "https://ejemplo.test", Fake.User)];
+
+        public AutofillSecret? Read(Guid id, FillScope scope, Func<AutofillEntryInfo, bool> authorize)
+        {
+            ReadAttempted = true;
+            var current = new AutofillEntryInfo(_id, "Ejemplo", "https://otro-sitio.test", Fake.User);
+            return authorize(current)
+                ? new AutofillSecret(Encoding.UTF8.GetBytes(Fake.User), Encoding.UTF8.GetBytes(Fake.Password), true, true)
+                : null;
         }
     }
 

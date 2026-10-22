@@ -81,6 +81,20 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Navegador -->
+                <TextBlock Text="Navegador" Style="{StaticResource Text.Subtitle}" Margin="0,22,0,8" />
+                <Border Style="{StaticResource Card}" Padding="18,14">
+                    <StackPanel>
+                        <CheckBox x:Name="BrowserCheck" Content="Permitir que la extensión de PassDesk rellene contraseñas en Chrome, Edge y Brave" />
+                        <TextBlock x:Name="BrowserStatus" Style="{StaticResource Text.Caption}" Margin="28,2,0,0" TextWrapping="Wrap"
+                                   Text="Desactivado por defecto. Solo rellena cuando eliges una cuenta, en páginas HTTPS que coinciden con la cuenta guardada y con PassDesk desbloqueado. Para instalar la extensión y el conector: scripts\install-browser.ps1 (ver docs\NAVEGADOR.md)." />
+                        <CheckBox x:Name="BrowserConfirmCheck" Margin="28,12,0,0" Content="Pedir confirmación en PassDesk antes de cada relleno (recomendado)" />
+                        <CheckBox x:Name="BrowserSubdomainsCheck" Margin="28,10,0,0" Content="Ofrecer también cuentas guardadas para otro subdominio del mismo sitio" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Margin="56,2,0,0" TextWrapping="Wrap"
+                                   Text="Menos estricto: la lista de dominios públicos de PassDesk es aproximada. Déjalo desactivado salvo que lo necesites." />
+                    </StackPanel>
+                </Border>
+
                 <!-- Bandeja del sistema e inicio con Windows -->
                 <TextBlock Text="Bandeja del sistema" Style="{StaticResource Text.Subtitle}" Margin="0,22,0,8" />
                 <Border Style="{StaticResource Card}" Padding="18,14">

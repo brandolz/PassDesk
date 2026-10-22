@@ -65,6 +65,18 @@ public sealed class AppSettings
     /// <summary>Recuerda actualizar desde Apple si pasan 30 días sin importar.</summary>
     public bool UpdateReminder { get; set; } = true;
 
+    /// <summary>
+    /// Integración con navegadores (extensión + conector). Desactivada por defecto: abre un canal local nuevo hacia las
+    /// credenciales, así que solo se activa si el usuario lo pide.
+    /// </summary>
+    public bool BrowserAutofillEnabled { get; set; }
+
+    /// <summary>Pide confirmar en PassDesk cada relleno antes de entregar la contraseña al navegador.</summary>
+    public bool BrowserAutofillConfirm { get; set; } = true;
+
+    /// <summary>También ofrece las cuentas guardadas para otro subdominio del mismo sitio (www, login…). Desactivado por defecto.</summary>
+    public bool BrowserAutofillSubdomains { get; set; }
+
     /// <summary>Ajusta valores fuera de rango (por ejemplo, si el archivo se editó a mano).</summary>
     public AppSettings Normalize()
     {

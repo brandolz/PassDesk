@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Conector de Native Messaging: lo lanza el navegador (un proceso por solicitud), valida el mensaje y lo pasa a
+       PassDesk por la tubería local. No descifra nada ni guarda nada. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>PassDesk.NativeHost</AssemblyName>
+    <RootNamespace>PassDesk.NativeHost</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PassDesk.Browser\PassDesk.Browser.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Extensiones autorizadas (una por línea). El instalador la reescribe si se usa otro identificador. -->
+    <None Include="allowed-origins.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

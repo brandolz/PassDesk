@@ -292,7 +292,8 @@ public sealed class AutofillBroker : IDisposable
         try
         {
             var confirmation = new FillConfirmation(info.Title, info.Username, OriginMatcher.DisplaySite(info.Url), origin, kind, scope);
-            return await _confirmer!.ConfirmAsync(confirmation, timeout.Token).ConfigureAwait(false);
+            // WaitAsync: si el confirmador no atiende la cancelación (o su ventana no llega a abrirse), la espera termina igual.
+            return await _confirmer!.ConfirmAsync(confirmation, timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

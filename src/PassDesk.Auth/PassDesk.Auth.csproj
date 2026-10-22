@@ -7,6 +7,7 @@
     <ProjectReference Include="..\PassDesk.Core\PassDesk.Core.csproj" />
     <ProjectReference Include="..\PassDesk.Crypto\PassDesk.Crypto.csproj" />
     <ProjectReference Include="..\PassDesk.Storage\PassDesk.Storage.csproj" />
+    <ProjectReference Include="..\PassDesk.Browser\PassDesk.Browser.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="PassDesk.Tests" />

@@ -1,0 +1,11 @@
+{
+  "name": "passdesk-extension-tests",
+  "private": true,
+  "description": "Pruebas de la extensión de navegador de PassDesk con Chromium real, el conector real y una bóveda ficticia.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 --test-timeout=900000 ./*.test.js"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

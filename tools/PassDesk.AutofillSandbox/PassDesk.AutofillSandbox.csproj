@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Prototipo y banco de pruebas de la integración con navegadores: el mismo intermediario y la misma tubería que
+       PassDesk, pero con una bóveda FICTICIA en memoria. No toca la bóveda real ni pide contraseñas. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PassDesk.Browser\PassDesk.Browser.csproj" />
+  </ItemGroup>
+</Project>

@@ -159,7 +159,16 @@ public sealed class AppServices : IDisposable
         }
     }
 
-    public static AppServices Create(AppPaths paths, Dispatcher dispatcher) => new(paths, dispatcher);
+    /// <summary>Integración con navegadores (extensión + conector). Solo escucha si está activada en Ajustes.</summary>
+    internal AutofillService Autofill { get; private set; } = null!;
+
+    public static AppServices Create(AppPaths paths, Dispatcher dispatcher)
+    {
+        var services = new AppServices(paths, dispatcher);
+        services.Autofill = new AutofillService(services, dispatcher);
+        services.Autofill.Apply(services.Settings);
+        return services;
+    }
 
     /// <summary>Se llama cuando la ventana principal ya tiene identificador (HWND).</summary>
     internal void AttachMainWindow(Window window)
@@ -206,6 +215,11 @@ public sealed class AppServices : IDisposable
             ConfigureExportWatcher();
         }
 
+        if (previous.BrowserAutofillEnabled != Settings.BrowserAutofillEnabled)
+        {
+            Autofill.Apply(Settings);
+        }
+
         SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -244,6 +258,7 @@ public sealed class AppServices : IDisposable
             AppLog.Warn(LogEvent.ClipboardFailed);
         }
 
+        Autofill?.Dispose();
         Clipboard.Dispose();
         Hotkeys?.Dispose();
         _exportWatcher?.Dispose();

@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "PassDesk",
+  "short_name": "PassDesk",
+  "version": "0.1.0",
+  "description": "Rellena usuario y contraseña desde PassDesk, solo cuando tú lo eliges. Todo ocurre en tu equipo: nada sale a internet.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzEUexYMFqu/WfglUTc8PcdN88XFHb0BYhdPafxB3kt7TIShIio8FUXUaApG1lS4nQfxhrAgOWSHrUmjN2BCncBWoApkvDKC3gYOT0vI413UGK/jVwk5TimBJjhWFVe0KguSJQYSX+Zp8L7FfRwEimojHnyxxQ8Eh8Nr0CdCX+JLNGo/PVeIprXOGt43WxFdS6Trv5xDa08aqVnwmTupeBPy68bEJvnI3UisQUD5iQ94NNjvTK7mstIUa31cnh0rfnxcz0DDz/+BTipNiLaIc54HlBntjD6XXdBj0Ek1wNihIQpC4oVQydU++EH5HFWSbL/i7/bLAhxpH9cFSsuBO/QIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["nativeMessaging", "activeTab", "scripting"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "PassDesk",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Ctrl+Shift+L" },
+      "description": "Abrir PassDesk para la página actual"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  }
+}

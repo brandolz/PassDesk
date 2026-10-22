@@ -48,6 +48,14 @@ public partial class SettingsWindow : Window
         DetectExportsCheck.IsChecked = settings.DetectNewExports;
         DeleteExportCheck.IsChecked = settings.DeleteExportAfterImport;
         ReminderCheck.IsChecked = settings.UpdateReminder;
+        BrowserCheck.IsChecked = settings.BrowserAutofillEnabled;
+        BrowserConfirmCheck.IsChecked = settings.BrowserAutofillConfirm;
+        BrowserSubdomainsCheck.IsChecked = settings.BrowserAutofillSubdomains;
+        if (!File.Exists(AutofillService.ExpectedHostPath()))
+        {
+            BrowserStatus.Text = "No se encontró PassDesk.NativeHost.exe junto a PassDesk.exe, así que el navegador no podrá conectarse. Instala PassDesk con scripts\\publish.ps1 y scripts\\install.ps1 (ver docs\\NAVEGADOR.md).";
+        }
+
         TrayOnClose.IsChecked = settings.TrayMode == TrayMode.CloseToTray;
         TrayOnMinimize.IsChecked = settings.TrayMode == TrayMode.MinimizeToTray;
         _startupEnabled = services.Startup.IsEnabled;
@@ -130,6 +138,9 @@ public partial class SettingsWindow : Window
         settings.DeleteExportAfterImport = DeleteExportCheck.IsChecked == true;
         settings.UpdateReminder = ReminderCheck.IsChecked == true;
         settings.TrayMode = TrayOnMinimize.IsChecked == true ? TrayMode.MinimizeToTray : TrayMode.CloseToTray;
+        settings.BrowserAutofillEnabled = BrowserCheck.IsChecked == true;
+        settings.BrowserAutofillConfirm = BrowserConfirmCheck.IsChecked == true;
+        settings.BrowserAutofillSubdomains = BrowserSubdomainsCheck.IsChecked == true;
         if (_hotkey is { } hotkey)
         {
             settings.QuickSearchHotkey = hotkey.ToString();
