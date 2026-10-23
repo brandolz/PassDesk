@@ -5,7 +5,8 @@
         Width="460" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="True" Topmost="True"
         Background="{DynamicResource Brush.Window}" Foreground="{DynamicResource Brush.Text}"
-        FontFamily="{StaticResource Font.Text}" FontSize="14" UseLayoutRounding="True">
+        FontFamily="{StaticResource Font.Text}" FontSize="14" UseLayoutRounding="True"
+        FocusManager.FocusedElement="{Binding ElementName=CancelButton}">
     <StackPanel Margin="28,24,28,22">
         <TextBlock Text="¿Rellenar en el navegador?" Style="{StaticResource Text.Title}" FontSize="20" />
         <TextBlock x:Name="Summary" Style="{StaticResource Text.Caption}" FontSize="14" Margin="0,12,0,0" TextWrapping="Wrap" />
@@ -24,7 +25,8 @@
                    Text="Solo si la página que ves es la que esperas. Si no la reconoces o no has pedido nada, pulsa Cancelar." />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
             <Button x:Name="CancelButton" Style="{StaticResource Button.Standard}" Content="Cancelar" MinWidth="96" IsCancel="True" IsDefault="True" />
-            <Button x:Name="AllowButton" Style="{StaticResource Button.Accent}" Content="_Permitir" MinWidth="110" Margin="8,0,0,0" Click="OnAllow" />
+            <!-- Sin tecla de acceso y deshabilitado hasta que la ventana lleva un segundo activa (ConfirmArming). -->
+            <Button x:Name="AllowButton" Style="{StaticResource Button.Accent}" Content="Permitir" MinWidth="110" Margin="8,0,0,0" IsEnabled="False" Click="OnAllow" />
         </StackPanel>
     </StackPanel>
 </Window>

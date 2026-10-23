@@ -50,7 +50,6 @@ public partial class SettingsWindow : Window
         ReminderCheck.IsChecked = settings.UpdateReminder;
         BrowserCheck.IsChecked = settings.BrowserAutofillEnabled;
         BrowserConfirmCheck.IsChecked = settings.BrowserAutofillConfirm;
-        BrowserSubdomainsCheck.IsChecked = settings.BrowserAutofillSubdomains;
         if (!File.Exists(AutofillService.ExpectedHostPath()))
         {
             BrowserStatus.Text = "No se encontró PassDesk.NativeHost.exe junto a PassDesk.exe, así que el navegador no podrá conectarse. Instala PassDesk con scripts\\publish.ps1 y scripts\\install.ps1 (ver docs\\NAVEGADOR.md).";
@@ -140,7 +139,6 @@ public partial class SettingsWindow : Window
         settings.TrayMode = TrayOnMinimize.IsChecked == true ? TrayMode.MinimizeToTray : TrayMode.CloseToTray;
         settings.BrowserAutofillEnabled = BrowserCheck.IsChecked == true;
         settings.BrowserAutofillConfirm = BrowserConfirmCheck.IsChecked == true;
-        settings.BrowserAutofillSubdomains = BrowserSubdomainsCheck.IsChecked == true;
         if (_hotkey is { } hotkey)
         {
             settings.QuickSearchHotkey = hotkey.ToString();

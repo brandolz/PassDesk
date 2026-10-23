@@ -54,16 +54,18 @@ internal sealed class AutofillService : IDisposable
 
     public void Dispose() => Stop();
 
-    private AutofillPolicy CurrentPolicy()
+    private AutofillPolicy CurrentPolicy() => PolicyFrom(_services.Settings);
+
+    /// <summary>Política efectiva del producto a partir de los ajustes guardados.</summary>
+    internal static AutofillPolicy PolicyFrom(AppSettings settings) => new()
     {
-        var settings = _services.Settings;
-        return new AutofillPolicy
-        {
-            Enabled = settings.BrowserAutofillEnabled,
-            AllowSubdomains = settings.BrowserAutofillSubdomains,
-            RequireConfirmation = settings.BrowserAutofillConfirm,
-        };
-    }
+        Enabled = settings.BrowserAutofillEnabled,
+        // shortcut: sin la Public Suffix List completa, las coincidencias por subdominio quedan desactivadas en la beta,
+        // aunque un settings.json antiguo guarde BrowserAutofillSubdomains = true; reactivar al integrar la PSL, con un
+        // ajuste nuevo para que ese valor antiguo no la encienda solo.
+        AllowSubdomains = false,
+        RequireConfirmation = settings.BrowserAutofillConfirm,
+    };
 
     private void Start()
     {

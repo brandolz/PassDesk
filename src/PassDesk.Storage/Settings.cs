@@ -74,7 +74,10 @@ public sealed class AppSettings
     /// <summary>Pide confirmar en PassDesk cada relleno antes de entregar la contraseña al navegador.</summary>
     public bool BrowserAutofillConfirm { get; set; } = true;
 
-    /// <summary>También ofrece las cuentas guardadas para otro subdominio del mismo sitio (www, login…). Desactivado por defecto.</summary>
+    /// <summary>
+    /// Sin efecto en esta versión: las coincidencias por subdominio están desactivadas en la beta (ver
+    /// <c>AutofillService.PolicyFrom</c>). Se conserva para que los archivos de ajustes anteriores se sigan leyendo igual.
+    /// </summary>
     public bool BrowserAutofillSubdomains { get; set; }
 
     /// <summary>Ajusta valores fuera de rango (por ejemplo, si el archivo se editó a mano).</summary>

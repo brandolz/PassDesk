@@ -334,6 +334,51 @@ public class BrowserAutofillTests
         Assert.DoesNotContain(User, text);
     }
 
+    [Fact]
+    public void Product_policy_never_allows_subdomains_whatever_the_settings_say()
+    {
+        foreach (bool subdomains in new[] { false, true })
+        {
+            foreach (bool confirm in new[] { false, true })
+            {
+                var policy = AutofillService.PolicyFrom(new AppSettings
+                {
+                    BrowserAutofillEnabled = true,
+                    BrowserAutofillConfirm = confirm,
+                    BrowserAutofillSubdomains = subdomains,
+                });
+                Assert.False(policy.AllowSubdomains);
+                Assert.True(policy.Enabled);
+                Assert.Equal(confirm, policy.RequireConfirmation);
+            }
+        }
+
+        Assert.False(AutofillService.PolicyFrom(new AppSettings()).Enabled);
+    }
+
+    [Fact]
+    public async Task An_old_settings_file_with_subdomains_on_still_loads_but_does_not_turn_them_back_on()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("settings.json"), """{ "BrowserAutofillEnabled": true, "BrowserAutofillSubdomains": true }""");
+        var loaded = new SettingsStore(temp.File("settings.json")).Load();
+        Assert.True(loaded.BrowserAutofillEnabled);
+        Assert.True(loaded.BrowserAutofillSubdomains);
+        Assert.True(loaded.BrowserAutofillConfirm);
+
+        using var session = NewUnlockedSession();
+        using var vault = new SessionAutofillVault(session);
+        using var broker = new AutofillBroker(vault, () => AutofillService.PolicyFrom(loaded));
+        async Task<int> Count(string origin)
+        {
+            using var result = await broker.HandleAsync(new AutofillRequest(RequestType.List, null, Origin(origin), null, null, null), CancellationToken.None);
+            return Assert.IsType<ListResult>(result).Matches.Count;
+        }
+
+        Assert.Equal(1, await Count(Site));
+        Assert.Equal(0, await Count("https://login.ejemplo-autorrelleno.test"));
+    }
+
     [Theory]
     [InlineData(@"C:\Users\ana\AppData\Local\Programs\PassDesk\PassDesk.NativeHost.exe", @"C:\Users\ana\AppData\Local\Programs\PassDesk\PassDesk.NativeHost.exe", true)]
     [InlineData(@"c:\users\ANA\appdata\local\programs\passdesk\passdesk.nativehost.exe", @"C:\Users\ana\AppData\Local\Programs\PassDesk\PassDesk.NativeHost.exe", true)]

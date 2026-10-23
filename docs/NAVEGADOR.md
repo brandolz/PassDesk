@@ -26,7 +26,7 @@ PassDesk puede rellenar tu usuario y contraseña en Chrome, Edge y Brave **cuand
 | Lógica de orígenes, protocolo, intermediario, tubería y conector | **300 pruebas** multiplataforma (`tests/PassDesk.Browser.Tests`), ejecutadas en Linux con .NET 10 (todas pasan). Se comprobó además, introduciendo errores a propósito (mutaciones), que fallan si se rompe cada control importante. |
 | Extensión real + conector real + tubería real + bóveda **ficticia** | **26 pruebas** de extremo a extremo (`tests/extension`) con **Chromium 141 en Linux** (modo headless), ejecutadas y todas pasan. |
 | Permiso temporal `activeTab` al pulsar el icono de la barra de herramientas | **No probado**: el modo headless no puede pulsar el icono. Las pruebas conceden a la extensión acceso a `*.test` en una copia del manifiesto para ejercitar el mismo código. El comportamiento se apoya en la documentación de Chrome sobre `activeTab`. |
-| Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | **Compilado**, pero **no ejecutado en Windows**. Hay 27 casos de prueba nuevos (`tests/PassDesk.Tests/BrowserAutofillTests.cs`) que necesitan Windows; también están sin ejecutar las 236 pruebas anteriores en este entorno. Los scripts `.ps1` se comprobaron con PowerShell 7 en Linux (sintaxis, identificador de extensión, manifiesto y rutas con espacios y acentos, contra un registro simulado), no con el registro real de Windows. |
+| Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | Las pruebas automáticas de integración (29 casos en `tests/PassDesk.Tests/BrowserAutofillTests.cs`) y las del retardo de armado de la confirmación (7 en `tests/PassDesk.Tests/ConfirmArmingTests.cs`) se han ejecutado en Windows y pasan. La ventana de confirmación real (teclado, ratón y foco) **no se ha probado a mano**, y las 236 pruebas anteriores siguen sin ejecutarse en este entorno. Los scripts `.ps1` se comprobaron con PowerShell 7 en Linux (sintaxis, identificador de extensión, manifiesto y rutas con espacios y acentos, contra un registro simulado), no con el registro real de Windows. |
 | Chrome estable, Edge, Brave **en Windows** | **No probados.** Se consideran compatibles porque comparten Chromium, Manifest V3 y Native Messaging, pero no se ha verificado. Comprobado solo que Brave 1.98 busca el conector en la clave del registro de Chrome (no tiene clave propia), que es donde lo registra el instalador. |
 | Firefox, Safari | No compatibles (otra API de extensiones). |
 
@@ -77,7 +77,9 @@ activada en Ajustes, `PassDesk.NativeHost.exe` junto a `PassDesk.exe`, y que el 
 
 1. Abre la página de acceso y pulsa el icono de PassDesk (o `Ctrl+Mayús+L`, si tu navegador asignó el atajo).
 2. Elige la cuenta. Con la confirmación activada, PassDesk te enseña una ventana con la cuenta, el usuario y la página;
-   pulsa **Permitir** (o **Cancelar**, la opción por defecto: una pulsación de `Intro` despistada no autoriza).
+   pulsa **Permitir** (o **Cancelar**, la opción por defecto y la que tiene el foco: `Intro`, `Espacio` o `Esc` despistados no
+   autorizan). **Permitir** no tiene atajo de teclado y solo se habilita cuando la ventana lleva un segundo seguido activa;
+   si cambias a otra ventana y vuelves, se espera otro segundo.
 3. *Sugerencias al enfocar los campos* (opcional): en la ventana de la extensión, pulsa «Mostrar sugerencias al enfocar los
    campos de este sitio» y concede el permiso a ese sitio. Después, al pulsar un campo de acceso aparece una sugerencia con
    el servicio y el usuario; `↓`/`↑` para moverte, `Intro` para elegir, `Esc` para cerrar. Se puede retirar en cualquier momento.
@@ -135,7 +137,7 @@ Reglas de coincidencia (por defecto, **estrictas**):
 | Mismo host (con `www.` equivalente), mismo puerto, página HTTPS | Coincide |
 | `ejemplo.com.evil.test`, `miejemplo.com`, `ejemplo.com@evil.test`, homógrafos IDN | No coincide |
 | Otro puerto o página HTTP | No coincide |
-| Otro subdominio (`login.ejemplo.com` ↔ `ejemplo.com`) | No coincide, salvo que actives *Ofrecer también cuentas guardadas para otro subdominio*; entonces se ofrece avisando de dónde se guardó |
+| Otro subdominio (`login.ejemplo.com` ↔ `ejemplo.com`) | No coincide. En esta beta la coincidencia por subdominio está desactivada: guarda la URL de la página donde inicias sesión |
 | Plataformas de alojamiento compartido (`a.github.io` ↔ `b.github.io`) | Nunca coinciden entre sí |
 | Direcciones IP | Solo coincidencia exacta |
 
@@ -161,8 +163,9 @@ accesibles desde la web. No usa red (CSP con `connect-src 'none'`). Una prueba a
 - **Malware con tu usuario** (que lea memoria del navegador o de PassDesk, o simule clics) queda fuera de lo que cualquier
   gestor puede impedir; la confirmación nativa y la comprobación del conector lo dificultan, no lo impiden.
 - Las cadenas de JavaScript no se pueden borrar de memoria: la contraseña vive en el navegador durante unos instantes.
-- La lista de dominios públicos para coincidencias por subdominio es **aproximada** (no es la Public Suffix List completa);
-  por eso esa opción está desactivada por defecto.
+- **Sin coincidencias por subdominio en esta beta.** PassDesk no incluye la Public Suffix List completa, y con una lista
+  aproximada dos clientes distintos de un mismo servicio podrían parecer «el mismo sitio». Por eso la opción está desactivada
+  y oculta en Ajustes. Un archivo de ajustes antiguo que la tenga activada se sigue leyendo, pero no la vuelve a encender.
 - Formularios no estándar (campos creados en `canvas`, accesos en ventanas emergentes de otro dominio, marcos de otro origen)
   no se rellenan. Los accesos con varios campos de contraseña (registro, cambio) tampoco.
 - Si la página enfoca el campo sola (`autofocus`), no aparece la sugerencia hasta que pulses; el icono de la extensión
@@ -175,8 +178,7 @@ accesibles desde la web. No usa red (CSP con `connect-src 'none'`). Una prueba a
 | Ajuste | Por defecto | Efecto |
 |---|---|---|
 | Permitir que la extensión rellene contraseñas | **Desactivado** | Crea o cierra la tubería local al instante |
-| Pedir confirmación en PassDesk antes de cada relleno | Activado | Ventana nativa con cuenta, usuario y página; `Cancelar` por defecto |
-| Ofrecer cuentas de otro subdominio del mismo sitio | Desactivado | Coincidencias «relacionadas» con aviso |
+| Pedir confirmación en PassDesk antes de cada relleno | Activado | Ventana nativa con cuenta, usuario y página; `Cancelar` por defecto y con el foco; `Permitir` sin atajo y habilitado tras un segundo con la ventana activa |
 
 ## Pruebas
 
@@ -207,7 +209,7 @@ misma carpeta de datos, porque ambos quieren la misma tubería.)
 
 ### Probarlo en tu equipo (lista de comprobación)
 
-1. `dotnet test PassDesk.slnx`: deben pasar **todas** (las 236 de siempre, las 27 nuevas de integración y las 300 multiplataforma).
+1. `dotnet test PassDesk.slnx`: deben pasar **todas** (las 236 de siempre, las 36 nuevas de integración y de la confirmación, y las 300 multiplataforma).
 2. `scripts\publish.ps1`, `scripts\install.ps1`, `scripts\install-browser.ps1`; cargar la extensión; activar la casilla.
 3. Con una cuenta de prueba (no la real): rellenar desde el icono; con *Pedir confirmación*, comprobar que aparece la
    ventana, que `Cancelar` no rellena y que `Permitir` sí.

@@ -28,8 +28,8 @@ extensión ─ Native Messaging (solo la extensión autorizada) ─ conector (va
 |---|---|---|---|
 | 1 | Una página pide credenciales a la extensión (mensajes, eventos, `postMessage`) | La extensión no escucha nada de la página; el script de contenido vive en el mundo aislado; `externally_connectable` no existe. Solo reacciona a clics y teclas **reales** (`isTrusted`). [E: página hostil] | Ninguno conocido |
 | 2 | Una página provoca la sugerencia con `focus()`/`click()` sintéticos para espiar | La sugerencia exige una interacción real reciente del usuario y no abre nada si la página enfoca por código. La interfaz está en una raíz sombra **cerrada**: la página no puede leerla. [E] | Una página puede saber que existe un elemento superpuesto, no su contenido |
-| 3 | Clickjacking: la página tapa o vuelve transparente la sugerencia | La sugerencia usa la capa superior (`popover`); antes de aceptar un clic se comprueba que sigue visible, opaca y sin transformaciones, y que lleva visible ≥ 350 ms. Además, con la confirmación nativa, la decisión final está en una ventana de PassDesk que la página no controla | Mitigación de mejor esfuerzo; la ventana nativa es el control firme |
-| 4 | Sitio equivocado: dominio engañoso (`ejemplo.com.evil.test`), homógrafo, usuario en la URL, otro puerto, otro esquema | Comparación por host/puerto/esquema enteros, nunca por texto; punycode; origen estricto (sin usuario, ruta ni puntos finales). [B: más de 100 casos] [E] | La opción de subdominios usa una lista de sufijos públicos aproximada (desactivada por defecto) |
+| 3 | Clickjacking: la página tapa o vuelve transparente la sugerencia | La sugerencia usa la capa superior (`popover`); antes de aceptar un clic se comprueba que sigue visible, opaca y sin transformaciones, y que lleva visible ≥ 350 ms. Además, con la confirmación nativa, la decisión final está en una ventana de PassDesk que la página no controla: «Permitir» no tiene tecla de acceso, el foco empieza en «Cancelar» y el botón solo se habilita tras un segundo seguido con la ventana activa (se rearma al recuperar el foco). [W: retardo de armado] | Mitigación de mejor esfuerzo; la ventana nativa es el control firme |
+| 4 | Sitio equivocado: dominio engañoso (`ejemplo.com.evil.test`), homógrafo, usuario en la URL, otro puerto, otro esquema | Comparación por host/puerto/esquema enteros, nunca por texto; punycode; origen estricto (sin usuario, ruta ni puntos finales). [B: más de 100 casos] [E] | Ninguno conocido: la coincidencia por subdominio, que dependía de una lista de sufijos públicos aproximada, está desactivada en la beta aunque un ajuste antiguo diga lo contrario. [W] |
 | 5 | Página HTTP o interna del navegador | Se exige HTTPS en la extensión **y** en PassDesk; `chrome://`, `edge://`, `chrome-extension://`, `file:`, `about:` se rechazan. [B] [E] | Ninguno: no hay excepción para HTTP |
 | 6 | `iframe` de otro origen (p. ej. un marco hostil que embebe tu banco) | El script de contenido no actúa si algún ancestro es de otro origen; el service worker lo vuelve a comprobar con la URL de la pestaña; la ventana de la extensión solo opera en el documento principal. [E] | Marcos del mismo origen sí se admiten |
 | 7 | Campos trampa (ocultos, transparentes, fuera de pantalla, tapados) para robar el relleno | Solo se rellenan campos visibles, de tamaño razonable, no tapados y con opacidad real. [E: trampa] | Un campo visible pero engañoso en la propia página sigue siendo visible para el usuario |
@@ -55,9 +55,10 @@ extensión ─ Native Messaging (solo la extensión autorizada) ─ conector (va
 ## Decisiones que conviene conocer
 
 - **Confirmación nativa activada por defecto.** Añade un clic, pero cierra el hueco más importante: que cualquier cosa que
-  hable con la tubería obtenga contraseñas solo con listar y rellenar. Se puede desactivar en Ajustes.
-- **Coincidencia estricta por defecto.** Un sitio que inicia sesión en otro subdominio no se rellena hasta que se activa la
-  opción. Es menos cómodo y más seguro.
+  hable con la tubería obtenga contraseñas solo con listar y rellenar. Se puede desactivar en Ajustes. Para que no se
+  autorice por accidente, «Permitir» no tiene atajo de teclado y solo se habilita tras un segundo con la ventana activa.
+- **Solo coincidencia exacta en la beta.** Un sitio que inicia sesión en otro subdominio no se rellena: la opción de
+  subdominios está desactivada y oculta hasta integrar la Public Suffix List completa. Es menos cómodo y más seguro.
 - **Integración desactivada por defecto.** Hasta que la activas, PassDesk no abre ninguna tubería.
 - **El conector no es persistente.** Un proceso por solicitud, sin estado.
 - **Lo que no se hizo:** excepción para HTTP en `localhost` (no se ha encontrado una necesidad que la justifique), lanzar

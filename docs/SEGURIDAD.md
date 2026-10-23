@@ -210,15 +210,16 @@ Desactivado por defecto. Detalle y modelo de amenazas: [NAVEGADOR.md](NAVEGADOR.
   (`allowed_origins`); el conector exige además ese origen exacto, y valida cada mensaje (4 KiB, campos conocidos, tipos
   exactos). PassDesk vuelve a validar todo.
 - **Sitio correcto.** Se compara el origen entero (HTTPS, host, puerto) con la URL guardada, nunca por texto
-  (`ejemplo.com.evil.test` ≠ `ejemplo.com`); sin HTTP, sin páginas internas del navegador, sin marcos de otro origen. Otro
-  subdominio solo si lo activas. El origen que da el navegador no basta: PassDesk entrega con una **ficha de un solo uso**
+  (`ejemplo.com.evil.test` ≠ `ejemplo.com`); sin HTTP, sin páginas internas del navegador, sin marcos de otro origen. En
+  esta beta, nunca en otro subdominio. El origen que da el navegador no basta: PassDesk entrega con una **ficha de un solo uso**
   (60 s) ligada a la cuenta, al origen y al desbloqueo actual, y vuelve a comprobar el origen contra la bóveda al entregar.
 - **Bloqueo.** Con la bóveda bloqueada no se lista ni se rellena. La lectura de la contraseña se hace bajo el mismo cerrojo
   que el bloqueo (`VaultSession.TryRead`); si se bloquea mientras se espera la confirmación, no se entrega (aunque se vuelva a
   desbloquear). Al bloquear caducan todas las fichas.
 - **Confirmación del usuario.** Por defecto, cada relleno pide **Permitir** en una ventana de PassDesk (cuenta, usuario y
-  página; `Cancelar` por defecto; se cierra sola al bloquear). La extensión además solo rellena tras un clic o una tecla
-  reales sobre una cuenta concreta, nunca al cargar la página.
+  página; `Cancelar` por defecto y con el foco; se cierra sola al bloquear). **Permitir** no tiene atajo de teclado y solo se
+  habilita tras un segundo seguido con la ventana activa, así que una tecla o un clic justo cuando aparece no autorizan. La
+  extensión además solo rellena tras un clic o una tecla reales sobre una cuenta concreta, nunca al cargar la página.
 - **Menos datos.** Solo se devuelve lo pedido: en un acceso en dos pasos, primero el usuario y después la contraseña. Las
   listas llevan servicio y usuario, nunca contraseñas.
 - **Límites.** Peticiones limitadas por minuto, un relleno a la vez, cuatro conexiones, tiempos máximos, y bloqueo temporal
