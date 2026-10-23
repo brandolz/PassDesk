@@ -8,6 +8,7 @@
     2. Crea el manifiesto de Native Messaging (browser\com.passdesk.autofill.json) con la ruta ABSOLUTA del conector
        (admite espacios) y como único origen permitido el de la extensión de PassDesk.
     3. Lo registra en HKCU\Software\<navegador>\NativeMessagingHosts\com.passdesk.autofill para cada navegador elegido.
+       Brave no tiene clave propia en Windows: lee la de Chrome (HKCU\Software\Google\Chrome\NativeMessagingHosts).
 
   NO instala la extensión en el navegador (hay que cargarla desde browser\extension: ver docs\NAVEGADOR.md), NO activa el
   autorrelleno (se activa en PassDesk › Ajustes › Navegador) y NO toca la bóveda, los documentos ni las copias de seguridad.
@@ -89,7 +90,8 @@ $json = @"
 $keys = @{
     Chrome = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName"
     Edge   = "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$hostName"
-    Brave  = "HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\$hostName"
+    # Brave en Windows solo busca en las claves de Chrome y de Chromium (comprobado en Brave 1.98, Chromium 156).
+    Brave  = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName"
 }
 foreach ($browser in $Browsers) {
     New-Item -Path $keys[$browser] -Force -Value $manifestFile | Out-Null

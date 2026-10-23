@@ -19,8 +19,10 @@ $hostName = "com.passdesk.autofill"
 $manifestFile = Join-Path $InstallDir "browser\$hostName.json"
 
 $keys = @(
+    # Chrome y Brave (en Windows, Brave lee la clave de Chrome).
     "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName",
     "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$hostName",
+    # Brave no la lee; se limpia por si la escribió una versión anterior de install-browser.ps1.
     "HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\$hostName"
 )
 foreach ($key in $keys) {

@@ -27,7 +27,7 @@ PassDesk puede rellenar tu usuario y contraseña en Chrome, Edge y Brave **cuand
 | Extensión real + conector real + tubería real + bóveda **ficticia** | **26 pruebas** de extremo a extremo (`tests/extension`) con **Chromium 141 en Linux** (modo headless), ejecutadas y todas pasan. |
 | Permiso temporal `activeTab` al pulsar el icono de la barra de herramientas | **No probado**: el modo headless no puede pulsar el icono. Las pruebas conceden a la extensión acceso a `*.test` en una copia del manifiesto para ejercitar el mismo código. El comportamiento se apoya en la documentación de Chrome sobre `activeTab`. |
 | Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | **Compilado**, pero **no ejecutado en Windows**. Hay 27 casos de prueba nuevos (`tests/PassDesk.Tests/BrowserAutofillTests.cs`) que necesitan Windows; también están sin ejecutar las 236 pruebas anteriores en este entorno. Los scripts `.ps1` se comprobaron con PowerShell 7 en Linux (sintaxis, identificador de extensión, manifiesto y rutas con espacios y acentos, contra un registro simulado), no con el registro real de Windows. |
-| Chrome estable, Edge, Brave **en Windows** | **No probados.** Se consideran compatibles porque comparten Chromium, Manifest V3 y Native Messaging, pero no se ha verificado. |
+| Chrome estable, Edge, Brave **en Windows** | **No probados.** Se consideran compatibles porque comparten Chromium, Manifest V3 y Native Messaging, pero no se ha verificado. Comprobado solo que Brave 1.98 busca el conector en la clave del registro de Chrome (no tiene clave propia), que es donde lo registra el instalador. |
 | Firefox, Safari | No compatibles (otra API de extensiones). |
 
 ## Instalación (Windows, sin permisos de administrador)
@@ -44,7 +44,8 @@ Requisitos: PassDesk instalado con `scripts\publish.ps1` y `scripts\install.ps1`
 
    Escribe `%LOCALAPPDATA%\Programs\PassDesk\browser\com.passdesk.autofill.json` (con la ruta absoluta del conector, admite
    espacios y nombres de usuario con caracteres especiales) y lo registra en `HKCU` (no toca `HKLM`). El manifiesto solo
-   admite el origen de la extensión de PassDesk.
+   admite el origen de la extensión de PassDesk. Brave no tiene clave propia en Windows: lee la de Chrome
+   (`HKCU\Software\Google\Chrome\NativeMessagingHosts`), así que registrar Brave y registrar Chrome escriben la misma entrada.
 2. **Cargar la extensión** (una vez por navegador). La carpeta es `%LOCALAPPDATA%\Programs\PassDesk\browser\extension`:
    - **Chrome:** `chrome://extensions` › activa *Modo de desarrollador* › *Cargar descomprimida* › elige la carpeta.
    - **Edge:** `edge://extensions` › activa *Modo de desarrollador* › *Cargar desempaquetada* › elige la carpeta.
