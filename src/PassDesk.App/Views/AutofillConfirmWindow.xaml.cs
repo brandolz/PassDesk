@@ -67,6 +67,10 @@ public partial class AutofillConfirmWindow : Window
         Close();
     }
 
+    // La ventana se abre con Show(), no con ShowDialog(): IsCancel/IsDefault solo hacen que Esc e Intro pulsen este botón,
+    // no cierran la ventana por sí solos.
+    private void OnCancel(object sender, RoutedEventArgs e) => Close();
+
     private void OnActivated(object? sender, EventArgs e)
     {
         _arming.Activated();

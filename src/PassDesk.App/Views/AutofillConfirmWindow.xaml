@@ -24,7 +24,7 @@
         <TextBlock Style="{StaticResource Text.Caption}" Margin="0,10,0,0" TextWrapping="Wrap"
                    Text="Solo si la página que ves es la que esperas. Si no la reconoces o no has pedido nada, pulsa Cancelar." />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button x:Name="CancelButton" Style="{StaticResource Button.Standard}" Content="Cancelar" MinWidth="96" IsCancel="True" IsDefault="True" />
+            <Button x:Name="CancelButton" Style="{StaticResource Button.Standard}" Content="Cancelar" MinWidth="96" IsCancel="True" IsDefault="True" Click="OnCancel" />
             <!-- Sin tecla de acceso y deshabilitado hasta que la ventana lleva un segundo activa (ConfirmArming). -->
             <Button x:Name="AllowButton" Style="{StaticResource Button.Accent}" Content="Permitir" MinWidth="110" Margin="8,0,0,0" IsEnabled="False" Click="OnAllow" />
         </StackPanel>
