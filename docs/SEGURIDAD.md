@@ -201,7 +201,9 @@ Desactivado por defecto. Detalle y modelo de amenazas: [NAVEGADOR.md](NAVEGADOR.
 
 - **Sin servidor de red.** No hay HTTP ni WebSocket. Con la casilla activada, PassDesk abre una **tubería local con nombre**
   accesible solo para el usuario actual (`CurrentUserOnly`, sin clientes remotos) y que solo admite al conector
-  `PassDesk.NativeHost.exe` instalado junto a `PassDesk.exe` (se comprueba la ruta del proceso cliente). Desactivada la casilla,
+  `PassDesk.NativeHost.exe` instalado junto a `PassDesk.exe` (se comprueba la ruta del proceso cliente). A la inversa, el
+  conector solo habla con el `PassDesk.exe` instalado junto a él (se comprueba la ruta del proceso que atiende la tubería
+  antes de enviarle nada), y PassDesk no se suma a una tubería que haya creado otro programa. Desactivada la casilla,
   la tubería no existe. «PassDesk no abre puertos de red» sigue siendo cierto.
 - **PassDesk decide.** La extensión y el conector son un relé: no descifran nada, no guardan nada y no tienen operación alguna
   para listar o exportar la bóveda. Reutilizan `VaultSession`; no hay segunda bóveda ni segunda autenticación, y la

@@ -12,6 +12,9 @@ internal static class Program
 {
     private const string AllowedOriginsFile = "allowed-origins.txt";
 
+    /// <summary>El conector se instala junto a PassDesk.exe (publish.ps1), que es el único programa con el que habla.</summary>
+    private const string ServerFileName = "PassDesk.exe";
+
     private static async Task<int> Main(string[] args)
     {
         try
@@ -25,6 +28,7 @@ internal static class Program
             {
                 AllowedCallers = allowed,
                 PipeName = PipeNames.ForCurrentUser(),
+                ExpectedServerPath = Path.Combine(AppContext.BaseDirectory, ServerFileName),
             };
 
             await using var input = Console.OpenStandardInput();

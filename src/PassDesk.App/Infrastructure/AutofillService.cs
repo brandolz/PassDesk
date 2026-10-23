@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO.Pipes;
 using System.Windows.Threading;
 using PassDesk.App.Views;
@@ -162,34 +161,9 @@ internal sealed class AppLogAutofillAudit : IAutofillAudit
 /// </summary>
 internal sealed class HostProcessVerifier(string expectedPath) : IPipeClientVerifier
 {
-    public bool Verify(NamedPipeServerStream pipe)
-    {
-        try
-        {
-            if (!NativeMethods.GetNamedPipeClientProcessId(pipe.SafePipeHandle, out uint processId))
-            {
-                return false;
-            }
-
-            using var process = Process.GetProcessById((int)processId);
-            string? path = process.MainModule?.FileName;
-            return IsExpectedHost(path, expectedPath);
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException or NotSupportedException)
-        {
-            return false;
-        }
-    }
-
-    internal static bool IsExpectedHost(string? candidatePath, string expectedPath)
-    {
-        if (string.IsNullOrWhiteSpace(candidatePath) || string.IsNullOrWhiteSpace(expectedPath))
-        {
-            return false;
-        }
-
-        return string.Equals(Path.GetFullPath(candidatePath), Path.GetFullPath(expectedPath), StringComparison.OrdinalIgnoreCase);
-    }
+    public bool Verify(NamedPipeServerStream pipe) =>
+        NativeMethods.GetNamedPipeClientProcessId(pipe.SafePipeHandle, out uint processId)
+        && PipePeer.RunsExecutable(processId, expectedPath);
 }
 
 /// <summary>Muestra la confirmación de PassDesk (ventana nativa, en el hilo de la interfaz) y devuelve la decisión del usuario.</summary>

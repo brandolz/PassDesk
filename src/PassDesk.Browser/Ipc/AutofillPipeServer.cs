@@ -57,8 +57,10 @@ public sealed class AutofillPipeServer : IAsyncDisposable
             return;
         }
 
-        // Se crea la primera instancia aquí para que la tubería exista (y un nombre ocupado falle) al volver de Start.
-        var first = CreateServer();
+        // Se crea la primera instancia aquí para que la tubería exista al volver de Start. FirstPipeInstance hace que falle si
+        // otro programa ya la creó; no impide que otro proceso del usuario le añada instancias después: de eso se encarga el
+        // conector, que comprueba que quien atiende es PassDesk.
+        var first = CreateServer(PipeOptions.FirstPipeInstance);
         _acceptLoop = Task.Run(() => AcceptLoopAsync(first, _stop.Token));
     }
 
@@ -80,12 +82,12 @@ public sealed class AutofillPipeServer : IAsyncDisposable
         _stop.Dispose();
     }
 
-    private NamedPipeServerStream CreateServer() => new(
+    private NamedPipeServerStream CreateServer(PipeOptions extra = PipeOptions.None) => new(
         _pipeName,
         PipeDirection.InOut,
         maxNumberOfServerInstances: _limits.MaxConcurrentConnections + 2,
         PipeTransmissionMode.Byte,
-        PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | extra);
 
     private async Task AcceptLoopAsync(NamedPipeServerStream server, CancellationToken cancellationToken)
     {

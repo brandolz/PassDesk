@@ -49,8 +49,12 @@ internal sealed class PipeFixture : IAsyncDisposable
     {
         AllowedCallers = [Extension],
         PipeName = PipeName,
+        ExpectedServerPath = ThisProcess,
         ResponseTimeout = responseTimeout ?? TimeSpan.FromSeconds(10),
     };
+
+    /// <summary>En las pruebas, el «PassDesk» que atiende la tubería es este mismo proceso.</summary>
+    public static string ThisProcess => Environment.ProcessPath!;
 
     public async Task<NamedPipeClientStream> ConnectAsync()
     {
@@ -270,6 +274,47 @@ public class PipeServerTests
         Assert.Matches("^PassDesk\\.Autofill\\.[0-9A-F]{16}$", a);
     }
 
+    [Fact]
+    public async Task Start_fails_if_another_program_already_created_the_pipe()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // FirstPipeInstance es semántica de Windows.
+        }
+
+        string name = "PassDeskTest.ocupada." + Guid.NewGuid().ToString("N");
+        // Mismos parámetros que el servidor (4 conexiones + 2): sin FirstPipeInstance, PassDesk se sumaría a esta tubería sin enterarse.
+        await using var squatter = new NamedPipeServerStream(name, PipeDirection.InOut, 6, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        using var broker = new AutofillBroker(new FakeVault(), () => new AutofillPolicy(), TimeProvider.System, null, new RecordingUnlock(), new RecordingAudit());
+        await using var server = new AutofillPipeServer(name, broker);
+
+        var ex = Record.Exception(server.Start);
+        Assert.True(ex is UnauthorizedAccessException or IOException, $"Se esperaba un error de acceso o de E/S y llegó: {ex?.GetType().Name ?? "ninguno"}");
+    }
+
+    [Fact]
+    public async Task Any_program_of_the_user_can_add_instances_to_the_live_pipe()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        // Caracterización: el servidor no puede impedirlo (CurrentUserOnly da control total al usuario). Por eso es el conector
+        // quien comprueba que la instancia a la que se conecta la atiende PassDesk.
+        await using var fixture = new PipeFixture();
+        await using var extra = new NamedPipeServerStream(fixture.PipeName, PipeDirection.InOut, 6, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        Assert.True(extra.CanRead);
+    }
+
+    [Fact]
+    public void A_process_that_cannot_be_identified_is_never_the_expected_one()
+    {
+        Assert.False(PipePeer.RunsExecutable(uint.MaxValue, PipeFixture.ThisProcess));
+        Assert.False(PipePeer.RunsExecutable((uint)Environment.ProcessId, Path.Combine(Path.GetTempPath(), "PassDesk.exe")));
+        Assert.False(PipePeer.RunsExecutable((uint)Environment.ProcessId, string.Empty));
+    }
+
     private sealed class RejectAll : IPipeClientVerifier
     {
         public bool Verify(NamedPipeServerStream pipe) => false;
@@ -328,7 +373,7 @@ public class NativeHostTests
         await accept;
 
         uint? expected = OperatingSystem.IsWindows() ? (uint)Environment.ProcessId : null;
-        Assert.Equal(expected, ForegroundGrant.ServerProcessId(client));
+        Assert.Equal(expected, PipePeer.ServerProcessId(client));
         // Ceder el primer plano nunca falla de forma visible, aunque Windows no lo permita a este proceso.
         ForegroundGrant.ToPipeServer(client);
     }
@@ -470,6 +515,7 @@ public class NativeHostTests
         {
             AllowedCallers = [PipeFixture.Extension],
             PipeName = pipe,
+            ExpectedServerPath = PipeFixture.ThisProcess,
             ResponseTimeout = TimeSpan.FromMilliseconds(300),
         };
         var (exit, reply, _) = await RunHost(options, [PipeFixture.Extension], PipeFixture.Frame("""{"v":1,"type":"status"}"""));
@@ -480,6 +526,73 @@ public class NativeHostTests
         }
 
         await accept;
+    }
+
+    [Theory]
+    [InlineData("""{"v":1,"type":"status"}""")]
+    [InlineData("""{"v":1,"type":"unlock"}""")]
+    public async Task A_pipe_served_by_another_program_gets_nothing_and_the_reply_is_unavailable(string json)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // Fuera de Windows no se puede identificar al servidor (ver NativeHostRunner).
+        }
+
+        string pipe = "PassDeskTest.impostor." + Guid.NewGuid().ToString("N");
+        await using var impostor = new NamedPipeServerStream(pipe, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        // Se lee mientras el conector sigue conectado: al cerrar, Windows descarta lo que no se haya leído.
+        var accept = impostor.WaitForConnectionAsync();
+        var received = ReceivedBytesAsync();
+        var options = new NativeHostOptions
+        {
+            AllowedCallers = [PipeFixture.Extension],
+            PipeName = pipe,
+            // Este proceso atiende la tubería, pero no es el ejecutable esperado.
+            ExpectedServerPath = Path.Combine(Path.GetTempPath(), "PassDesk.exe"),
+            ResponseTimeout = TimeSpan.FromMilliseconds(500),
+        };
+
+        var (exit, reply, _) = await RunHost(options, [PipeFixture.Extension], PipeFixture.Frame(json));
+        using (reply)
+        {
+            Assert.Equal(NativeHostRunner.ExitOk, exit);
+            Assert.Equal(ErrorCodes.Unavailable, reply!.RootElement.GetProperty("error").GetString());
+        }
+
+        // Ni un byte de la solicitud (y, con «unlock», tampoco el primer plano, que se cede después de comprobar).
+        Assert.Equal(0, await received.WaitAsync(TimeSpan.FromSeconds(5)));
+
+        async Task<int> ReceivedBytesAsync()
+        {
+            try
+            {
+                await accept;
+                return await impostor.ReadAsync(new byte[1]);
+            }
+            catch (IOException)
+            {
+                return 0; // El conector cerró sin escribir.
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Without_an_expected_server_the_host_talks_to_nobody()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        await using var fixture = new PipeFixture();
+        var options = fixture.HostOptions() with { ExpectedServerPath = string.Empty };
+        var (_, reply, _) = await RunHost(options, [PipeFixture.Extension], PipeFixture.Frame("""{"v":1,"type":"list","origin":"https://ejemplo.test"}"""));
+        using (reply)
+        {
+            Assert.Equal(ErrorCodes.Unavailable, reply!.RootElement.GetProperty("error").GetString());
+        }
+
+        Assert.False(fixture.Audit.Has(AutofillAuditEvent.Listed));
     }
 
     [Fact]
@@ -504,7 +617,7 @@ public class NativeHostTests
                     // El conector cierra sin leer una respuesta demasiado grande; en Windows la escritura ve la tubería rota.
                 }
             });
-            var options = new NativeHostOptions { AllowedCallers = [PipeFixture.Extension], PipeName = pipe };
+            var options = new NativeHostOptions { AllowedCallers = [PipeFixture.Extension], PipeName = pipe, ExpectedServerPath = PipeFixture.ThisProcess };
             var (_, reply, _) = await RunHost(options, [PipeFixture.Extension], PipeFixture.Frame("""{"v":1,"type":"status"}"""));
             using (reply)
             {

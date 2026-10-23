@@ -3,6 +3,7 @@ using System.Text.Json;
 using PassDesk.App.Infrastructure;
 using PassDesk.Auth;
 using PassDesk.Browser.Broker;
+using PassDesk.Browser.Ipc;
 using PassDesk.Browser.Origins;
 using PassDesk.Browser.Protocol;
 using PassDesk.Core.Diagnostics;
@@ -391,7 +392,7 @@ public class BrowserAutofillTests
     [InlineData(@"C:\x\PassDesk.NativeHost.exe", "", false)]
     public void Only_the_installed_host_may_use_the_pipe(string? client, string expected, bool allowed)
     {
-        Assert.Equal(allowed, HostProcessVerifier.IsExpectedHost(client, expected));
+        Assert.Equal(allowed, PipePeer.IsExpectedExecutable(client, expected));
     }
 
     private static string Serialize(AutofillResult result)

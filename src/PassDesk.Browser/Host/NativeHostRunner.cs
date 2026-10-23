@@ -1,6 +1,7 @@
 using System.IO.Pipes;
 using System.Text.RegularExpressions;
 using PassDesk.Browser.Broker;
+using PassDesk.Browser.Ipc;
 using PassDesk.Browser.Protocol;
 
 namespace PassDesk.Browser.Host;
@@ -12,6 +13,9 @@ public sealed record NativeHostOptions
 
     public string PipeName { get; init; } = string.Empty;
 
+    /// <summary>Ejecutable que debe atender la tubería (<c>PassDesk.exe</c> junto al conector). Si está vacía, no se habla con nadie.</summary>
+    public string ExpectedServerPath { get; init; } = string.Empty;
+
     public TimeSpan ReadTimeout { get; init; } = TimeSpan.FromSeconds(5);
 
     public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(2);
@@ -19,7 +23,10 @@ public sealed record NativeHostOptions
     /// <summary>Espera máxima a la respuesta de PassDesk (incluye la confirmación del usuario).</summary>
     public TimeSpan ResponseTimeout { get; init; } = TimeSpan.FromSeconds(50);
 
-    /// <summary>Abre la conexión con PassDesk. Por defecto, la tubería local del usuario actual; las pruebas la sustituyen.</summary>
+    /// <summary>
+    /// Abre la conexión con PassDesk. Por defecto, la tubería local del usuario actual comprobando que la atiende
+    /// <see cref="ExpectedServerPath"/>; las pruebas la sustituyen, y quien la sustituya debe hacer esa comprobación.
+    /// </summary>
     public Func<string, TimeSpan, CancellationToken, Task<Stream>>? Connector { get; init; }
 }
 
@@ -92,8 +99,9 @@ public static partial class NativeHostRunner
             Stream pipe;
             try
             {
-                var connector = options.Connector ?? ConnectToPipeAsync;
-                pipe = await connector(options.PipeName, options.ConnectTimeout, cancellationToken).ConfigureAwait(false);
+                pipe = options.Connector is { } connector
+                    ? await connector(options.PipeName, options.ConnectTimeout, cancellationToken).ConfigureAwait(false)
+                    : await ConnectToPipeAsync(options.PipeName, options.ExpectedServerPath, options.ConnectTimeout, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException or OperationCanceledException && !cancellationToken.IsCancellationRequested)
             {
@@ -139,12 +147,23 @@ public static partial class NativeHostRunner
         }
     }
 
-    private static async Task<Stream> ConnectToPipeAsync(string pipeName, TimeSpan timeout, CancellationToken cancellationToken)
+    private static async Task<Stream> ConnectToPipeAsync(string pipeName, string expectedServerPath, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         try
         {
             await client.ConnectAsync((int)timeout.TotalMilliseconds, cancellationToken).ConfigureAwait(false);
+
+            // Cualquier programa del usuario puede crear esta tubería o añadirle instancias: antes de enviar nada o de ceder
+            // el primer plano, se comprueba que la atiende PassDesk. Si no se puede comprobar, es como si no estuviera abierto.
+            // shortcut: fuera de Windows no hay PassDesk ni forma de saber qué proceso atiende la tubería (solo la usa el
+            // banco de pruebas de la extensión); identificar al servidor allí si algún día hay versión para otro sistema.
+            if (OperatingSystem.IsWindows()
+                && (PipePeer.ServerProcessId(client) is not uint serverId || !PipePeer.RunsExecutable(serverId, expectedServerPath)))
+            {
+                throw new UnauthorizedAccessException();
+            }
+
             return client;
         }
         catch
