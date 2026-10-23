@@ -308,6 +308,59 @@ public class NativeHostTests
     }
 
     [Theory]
+    [InlineData(RequestType.Fill, true)]
+    [InlineData(RequestType.Unlock, true)]
+    [InlineData(RequestType.Status, false)]
+    [InlineData(RequestType.List, false)]
+    public void Only_requests_that_open_a_PassDesk_window_hand_over_the_foreground(RequestType type, bool needed)
+    {
+        Assert.Equal(needed, ForegroundGrant.IsNeededFor(type));
+    }
+
+    [Fact]
+    public async Task The_foreground_goes_to_the_process_that_serves_the_pipe()
+    {
+        string name = "PassDeskTest.primerplano." + Guid.NewGuid().ToString("N");
+        await using var server = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        var accept = server.WaitForConnectionAsync();
+        await using var client = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        await client.ConnectAsync(5000);
+        await accept;
+
+        uint? expected = OperatingSystem.IsWindows() ? (uint)Environment.ProcessId : null;
+        Assert.Equal(expected, ForegroundGrant.ServerProcessId(client));
+        // Ceder el primer plano nunca falla de forma visible, aunque Windows no lo permita a este proceso.
+        ForegroundGrant.ToPipeServer(client);
+    }
+
+    [Fact]
+    public async Task Unlock_and_fill_are_still_relayed_after_handing_over_the_foreground()
+    {
+        await using var fixture = new PipeFixture();
+        var (unlockExit, unlock, _) = await RunHost(fixture.HostOptions(), [PipeFixture.Extension], PipeFixture.Frame("""{"v":1,"type":"unlock"}"""));
+        using (unlock)
+        {
+            Assert.Equal(NativeHostRunner.ExitOk, unlockExit);
+            Assert.True(unlock!.RootElement.GetProperty("ok").GetBoolean());
+        }
+
+        var (_, list, _) = await RunHost(fixture.HostOptions(), [PipeFixture.Extension], PipeFixture.Frame("""{"v":1,"type":"list","origin":"https://ejemplo.test"}"""));
+        string fill;
+        using (list)
+        {
+            var match = list!.RootElement.GetProperty("matches")[0];
+            fill = $$"""{"v":1,"type":"fill","origin":"https://ejemplo.test","id":"{{match.GetProperty("id").GetString()}}","token":"{{match.GetProperty("token").GetString()}}","scope":"both"}""";
+        }
+
+        var (fillExit, reply, _) = await RunHost(fixture.HostOptions(), [PipeFixture.Extension], PipeFixture.Frame(fill));
+        using (reply)
+        {
+            Assert.Equal(NativeHostRunner.ExitOk, fillExit);
+            Assert.Equal(Fake.Password, reply!.RootElement.GetProperty("password").GetString());
+        }
+    }
+
+    [Theory]
     [InlineData("chrome-extension://ponmlkjihgfedcbaponmlkjihgfedcba/")]
     [InlineData("chrome-extension://abcdefghijklmnopabcdefghijklmnop")]
     [InlineData("CHROME-EXTENSION://abcdefghijklmnopabcdefghijklmnop/")]

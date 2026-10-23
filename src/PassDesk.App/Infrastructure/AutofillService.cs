@@ -222,7 +222,11 @@ internal sealed class WindowsFillConfirmer(AppServices services, Dispatcher disp
             // Tiempo agotado o solicitud cancelada: la ventana se cierra sin autorizar.
             registration = cancellationToken.Register(() => dispatcher.BeginInvoke(window.Close));
             window.Show();
-            window.Activate();
+            if (!window.Activate())
+            {
+                // Windows no deja pasar a primer plano (el conector no pudo cederlo): al menos se avisa en la barra de tareas.
+                NativeMethods.FlashTaskbar(new System.Windows.Interop.WindowInteropHelper(window).Handle);
+            }
         });
         return completion.Task;
     }

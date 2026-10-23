@@ -111,7 +111,11 @@ Formularios de registro o de cambio de contraseña (campos de «contraseña nuev
   del remitente que le da el navegador (nunca de lo que diga la página).
 - **Conector** (`src/PassDesk.NativeHost`): el navegador lo lanza por solicitud. Comprueba que lo lanzó la extensión
   autorizada (primer argumento), valida el mensaje (tamaño, tipos, campos), lo reenvía a PassDesk y devuelve la respuesta.
-  No descifra, no guarda, no registra y termina tras responder. No hay procesos persistentes.
+  No descifra, no guarda, no registra y termina tras responder. No hay procesos persistentes. Antes de reenviar una
+  solicitud que abre una ventana de PassDesk (la confirmación o la pantalla de desbloqueo), le cede el primer plano de
+  Windows (`AllowSetForegroundWindow`), porque PassDesk, en segundo plano, no puede ponerse delante del navegador por sí
+  solo. Si Windows tampoco lo permite, PassDesk hace parpadear su botón en la barra de tareas. Que la ventana salga delante
+  de un navegador real **no se ha verificado todavía en Windows**.
 - **PassDesk** (`src/PassDesk.Browser`, `src/PassDesk.Auth/SessionAutofillVault.cs`, `src/PassDesk.App/Infrastructure/AutofillService.cs`):
   el **único** que decide. Reutiliza la sesión existente: no hay segunda bóveda ni segunda autenticación. El conector no
   puede desbloquear la bóveda; solo puede pedir que PassDesk muestre su pantalla de bloqueo.

@@ -83,7 +83,7 @@ public static partial class NativeHostRunner
                 return ExitBadInput;
             }
 
-            if (!AutofillRequestParser.TryParse(request.Span, out _, out var error))
+            if (!AutofillRequestParser.TryParse(request.Span, out var parsed, out var error))
             {
                 await WriteErrorAsync(output, error == ProtocolError.UnsupportedOrigin ? ErrorCodes.UnsupportedOrigin : ErrorCodes.BadRequest, cancellationToken).ConfigureAwait(false);
                 return ExitBadInput;
@@ -103,6 +103,12 @@ public static partial class NativeHostRunner
 
             await using (pipe.ConfigureAwait(false))
             {
+                // Antes de reenviar: PassDesk abrirá su ventana en cuanto reciba la solicitud.
+                if (pipe is NamedPipeClientStream client && ForegroundGrant.IsNeededFor(parsed!.Type))
+                {
+                    ForegroundGrant.ToPipeServer(client);
+                }
+
                 using var responseTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 responseTimeout.CancelAfter(options.ResponseTimeout);
                 PinnedBuffer? response;
