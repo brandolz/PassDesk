@@ -1,4 +1,4 @@
-PassDesk - versión de prueba 1.0.0
+PassDesk - versión de prueba 1.1.0
 ==================================
 
 Gracias por probar PassDesk. Es un gestor de contraseñas local para Windows: todo
@@ -10,6 +10,9 @@ importes tus contraseñas reales.
 Requisitos: Windows 10 (versión 2004 o posterior) u 11, de 64 bits.
 No hace falta instalar .NET. Solo si aparece un error de «libsodium» hay que
 instalar Visual C++, que va incluido (ver «Problemas»).
+
+Novedad de la 1.1.0: autorrelleno en el navegador (Edge o Brave), opcional. Ver
+el punto 3.
 
 
 1. EJECUTAR
@@ -27,7 +30,7 @@ instalar Visual C++, que va incluido (ver «Problemas»).
    (mínimo 12 caracteres y fortaleza «Fuerte»; por ejemplo una frase de 4 palabras
    con un número y un símbolo), repítela y pulsa «Crear bóveda cifrada».
 2. Apúntala: si la olvidas, la bóveda no se puede abrir (al ser una prueba,
-   puedes borrarla y empezar de nuevo, ver punto 3).
+   puedes borrarla y empezar de nuevo, ver punto 4).
 3. Prueba lo que quieras con datos inventados: añadir credenciales con «+»,
    buscar (Ctrl+F), el generador de contraseñas, bloquear y desbloquear, Ajustes,
    documentos...
@@ -36,13 +39,66 @@ Al cerrar la ventana, PassDesk sigue en la bandeja del sistema (junto al reloj).
 Para salir del todo: clic derecho en su icono › «Salir».
 
 
-3. DESINSTALAR (no deja nada instalado)
+3. AUTORRELLENO EN EL NAVEGADOR (opcional; Microsoft Edge o Brave)
+------------------------------------------------------------------
+PassDesk puede rellenar el usuario y la contraseña en una página web, siempre
+después de que lo permitas en una ventana de PassDesk. Probado con Edge y Brave;
+Chrome debería funcionar igual, pero no se ha probado. Usa cuentas inventadas en
+páginas de prueba, por ejemplo https://the-internet.herokuapp.com/login.
+
+Hazlo después de extraer el ZIP en su carpeta definitiva: si luego la mueves,
+repite los pasos A y B.
+
+A. Registrar el conector (una vez)
+   1. Abre la carpeta de PassDesk. En Windows 11: clic derecho en un hueco ›
+      «Abrir en Terminal». En Windows 10: Mayús + clic derecho en un hueco ›
+      «Abrir la ventana de PowerShell aquí».
+   2. Escribe esto y pulsa Intro:
+         powershell -ExecutionPolicy Bypass -File .\install-browser.ps1 -Browsers Edge,Brave
+      Solo escribe en tu usuario de Windows; no pide permisos de administrador.
+
+B. Cargar la extensión (una vez por navegador)
+   - Edge: abre  edge://extensions , activa «Modo de desarrollador» › «Cargar
+     desempaquetada» › elige la carpeta  browser\extension  de PassDesk.
+   - Brave: abre  brave://extensions , activa «Modo de desarrollador» › «Cargar
+     extensión sin empaquetar» › la misma carpeta.
+   Comprueba que el identificador que muestra es
+   lemjmmcbbcdkkkpmchohlehobcljhcff  y ancla el icono de PassDesk en la barra.
+
+C. Activarlo en PassDesk
+   PassDesk › Ajustes › Navegador: activa «Permitir que la extensión de PassDesk
+   rellene contraseñas...» y deja marcada «Pedir confirmación en PassDesk antes de
+   cada relleno».
+
+D. Usarlo
+   1. Guarda en PassDesk una cuenta inventada con la dirección de la página donde
+      inicias sesión (los subdominios no cuentan: www.ejemplo.com y ejemplo.com
+      son sitios distintos).
+   2. Con PassDesk abierto (vale en la bandeja), abre esa página, pulsa el icono
+      de PassDesk en la barra del navegador y elige la cuenta.
+   3. PassDesk muestra una ventana con la cuenta, el usuario y la página.
+      «Permitir» se activa al cabo de un segundo; Intro, Espacio y Esc cancelan.
+      Si no contestas en 30 segundos, se cancela sola.
+
+   Si la extensión dice «PassDesk no está abierto...»: comprueba que PassDesk
+   está abierto, que la casilla de Ajustes está activada y que no has movido la
+   carpeta después del paso A.
+
+   Problema conocido: después de «Cancelado», si vuelves a pulsar la cuenta en la
+   misma ventanita sale «La elección caducó». Ciérrala y vuelve a abrirla.
+
+
+4. DESINSTALAR (no deja nada instalado)
 ---------------------------------------
-1. Sal de PassDesk: icono de la bandeja › «Salir».
-2. Borra la carpeta donde extrajiste el ZIP.
-3. Borra los datos de prueba: pulsa Win+R, escribe  %LOCALAPPDATA%  y pulsa
+1. Si usaste el autorrelleno: en la carpeta de PassDesk (como en el paso 3.A)
+   escribe
+      powershell -ExecutionPolicy Bypass -File .\uninstall-browser.ps1
+   y quita la extensión desde el navegador (Extensiones › Quitar).
+2. Sal de PassDesk: icono de la bandeja › «Salir».
+3. Borra la carpeta donde extrajiste el ZIP.
+4. Borra los datos de prueba: pulsa Win+R, escribe  %LOCALAPPDATA%  y pulsa
    Intro; borra la carpeta «PassDesk» (bóveda cifrada, ajustes y registro).
-4. Opcional: Win+R, escribe  %TEMP%\.net  y borra la carpeta «PassDesk»
+5. Opcional: Win+R, escribe  %TEMP%\.net  y borra la carpeta «PassDesk»
    (archivos internos que se descomprimen al arrancar).
 
 
@@ -68,6 +124,8 @@ QUÉ ME INTERESA SABER
 - Qué te resultó confuso o difícil de encontrar.
 - Cualquier error (una captura de pantalla ayuda; no incluyas contraseñas).
 - Tu versión de Windows (Win+R › winver).
+- Si probaste el autorrelleno: navegador y versión, si la ventana de PassDesk
+  salió delante del navegador y si algo se rellenó donde no debía.
 
 Nota: el README.md incluido describe todas las funciones; su apartado
 «4. Instalación» es para desarrolladores y no hace falta seguirlo.

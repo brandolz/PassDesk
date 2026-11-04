@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Registra el conector de PassDesk para Chrome, Edge y/o Brave (sin permisos de administrador).
 
@@ -14,10 +14,11 @@
   autorrelleno (se activa en PassDesk › Ajustes › Navegador) y NO toca la bóveda, los documentos ni las copias de seguridad.
 
 .PARAMETER InstallDir
-  Carpeta donde está instalado PassDesk (la de install.ps1). Debe contener PassDesk.NativeHost.exe.
+  Carpeta donde está instalado PassDesk. Debe contener PassDesk.NativeHost.exe. Por defecto, la carpeta de este script si el
+  conector está a su lado (paquete de prueba); si no, la de install.ps1.
 
 .PARAMETER Browsers
-  Navegadores a registrar: Chrome, Edge, Brave (por defecto, los tres).
+  Navegadores a registrar: Chrome, Edge, Brave (por defecto, los tres), separados por comas.
 
 .PARAMETER ExtensionId
   Identificador de la extensión. Por defecto se calcula de la clave de browser\extension\manifest.json. Solo hace falta si
@@ -27,21 +28,34 @@
   powershell -ExecutionPolicy Bypass -File scripts\install-browser.ps1 -Browsers Chrome,Edge
 #>
 param(
-    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Programs\PassDesk"),
-    [ValidateSet("Chrome", "Edge", "Brave")]
+    [string]$InstallDir,
     [string[]]$Browsers = @("Chrome", "Edge", "Brave"),
     [string]$ExtensionId
 )
 
 $ErrorActionPreference = "Stop"
 $hostName = "com.passdesk.autofill"
+
+if (-not $InstallDir) {
+    $InstallDir = if (Test-Path (Join-Path $PSScriptRoot "PassDesk.NativeHost.exe")) { $PSScriptRoot } else { Join-Path $env:LOCALAPPDATA "Programs\PassDesk" }
+}
+
+# Con powershell -File, «Edge,Brave» llega como un solo texto: se separa aquí en vez de con ValidateSet.
+$Browsers = @($Browsers -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$unknown = @($Browsers | Where-Object { $_ -notin "Chrome", "Edge", "Brave" })
+if ($unknown.Count -gt 0) {
+    throw "Navegador no admitido: $($unknown -join ', '). Usa Chrome, Edge o Brave."
+}
+
+if (-not (Test-Path (Join-Path $InstallDir "PassDesk.NativeHost.exe"))) {
+    throw "No se encuentra PassDesk.NativeHost.exe en $InstallDir. Publica e instala PassDesk primero: scripts\publish.ps1 y scripts\install.ps1."
+}
+
+# El manifiesto necesita la ruta absoluta del conector aunque -InstallDir sea relativa (por ejemplo, «.»).
+$InstallDir = (Resolve-Path -LiteralPath $InstallDir).ProviderPath
 $hostExe = Join-Path $InstallDir "PassDesk.NativeHost.exe"
 $extensionDir = Join-Path $InstallDir "browser\extension"
 $browserDir = Join-Path $InstallDir "browser"
-
-if (-not (Test-Path $hostExe)) {
-    throw "No se encuentra $hostExe. Publica e instala PassDesk primero: scripts\publish.ps1 y scripts\install.ps1."
-}
 
 function Get-ExtensionIdFromManifest([string]$manifestPath) {
     # El identificador de una extensión con «key» es el SHA-256 de su clave pública, 32 primeros caracteres, con 0-f → a-p.

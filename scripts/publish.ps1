@@ -76,10 +76,11 @@ Copy-Item (Join-Path $root "extension\*") $extensionTarget -Recurse -Force
 Copy-Item (Join-Path $root "docs\NAVEGADOR.md") (Join-Path $target "browser") -ErrorAction SilentlyContinue
 
 Copy-Item (Join-Path $root "README.md") $target -ErrorAction SilentlyContinue
-# Para probadores (solo versión autocontenida): instrucciones y el instalador oficial de Visual C++ que necesita
-# libsodium, si se ha descargado en dist\ (no se versiona).
+# Para probadores (solo versión autocontenida): instrucciones, los scripts que registran y quitan el conector desde la
+# carpeta del ZIP, y el instalador oficial de Visual C++ que necesita libsodium, si se ha descargado en dist\ (no se versiona).
 if ($Mode -eq "selfcontained") {
     Copy-Item (Join-Path $root "docs\LEEME-PRUEBA.txt") $target
+    Copy-Item (Join-Path $root "scripts\install-browser.ps1"), (Join-Path $root "scripts\uninstall-browser.ps1") $target
     $vcRedist = Join-Path $Output "vc_redist.x64.exe"
     if (Test-Path $vcRedist) { Copy-Item $vcRedist $target }
     else { Write-Warning "Falta $vcRedist (descárgalo de https://aka.ms/vc14/vc_redist.x64.exe); el paquete no lo incluirá." }

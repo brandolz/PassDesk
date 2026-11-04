@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Quita el registro del conector de PassDesk en Chrome, Edge y Brave.
 
@@ -11,11 +11,20 @@
   desmarca la casilla en PassDesk › Ajustes › Navegador.
 #>
 param(
-    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Programs\PassDesk")
+    # Por defecto, la carpeta de este script si el conector está a su lado (paquete de prueba); si no, la de install.ps1.
+    [string]$InstallDir
 )
 
 $ErrorActionPreference = "Stop"
 $hostName = "com.passdesk.autofill"
+
+if (-not $InstallDir) {
+    $InstallDir = if (Test-Path (Join-Path $PSScriptRoot "PassDesk.NativeHost.exe")) { $PSScriptRoot } else { Join-Path $env:LOCALAPPDATA "Programs\PassDesk" }
+}
+# La misma ruta absoluta que install-browser.ps1 escribió en el registro.
+if (Test-Path -LiteralPath $InstallDir) {
+    $InstallDir = (Resolve-Path -LiteralPath $InstallDir).ProviderPath
+}
 $manifestFile = Join-Path $InstallDir "browser\$hostName.json"
 
 $keys = @(

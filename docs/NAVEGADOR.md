@@ -23,11 +23,12 @@ PassDesk puede rellenar tu usuario y contraseña en Chrome, Edge y Brave **cuand
 
 | Componente | Cómo se ha comprobado |
 |---|---|
-| Lógica de orígenes, protocolo, intermediario, tubería y conector | **300 pruebas** multiplataforma (`tests/PassDesk.Browser.Tests`), ejecutadas en Linux con .NET 10 (todas pasan). Se comprobó además, introduciendo errores a propósito (mutaciones), que fallan si se rompe cada control importante. |
-| Extensión real + conector real + tubería real + bóveda **ficticia** | **26 pruebas** de extremo a extremo (`tests/extension`) con **Chromium 141 en Linux** (modo headless), ejecutadas y todas pasan. |
-| Permiso temporal `activeTab` al pulsar el icono de la barra de herramientas | **No probado**: el modo headless no puede pulsar el icono. Las pruebas conceden a la extensión acceso a `*.test` en una copia del manifiesto para ejercitar el mismo código. El comportamiento se apoya en la documentación de Chrome sobre `activeTab`. |
-| Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | Las pruebas automáticas de integración (29 casos en `tests/PassDesk.Tests/BrowserAutofillTests.cs`) y las del retardo de armado de la confirmación (7 en `tests/PassDesk.Tests/ConfirmArmingTests.cs`) se han ejecutado en Windows y pasan. La ventana de confirmación real (teclado, ratón y foco) **no se ha probado a mano**, y las 236 pruebas anteriores siguen sin ejecutarse en este entorno. Los scripts `.ps1` se comprobaron con PowerShell 7 en Linux (sintaxis, identificador de extensión, manifiesto y rutas con espacios y acentos, contra un registro simulado), no con el registro real de Windows. |
-| Chrome estable, Edge, Brave **en Windows** | **No probados.** Se consideran compatibles porque comparten Chromium, Manifest V3 y Native Messaging, pero no se ha verificado. Comprobado solo que Brave 1.98 busca el conector en la clave del registro de Chrome (no tiene clave propia), que es donde lo registra el instalador. |
+| Lógica de orígenes, protocolo, intermediario, tubería y conector | **312 pruebas** multiplataforma (`tests/PassDesk.Browser.Tests`), ejecutadas en Windows con .NET 10 (todas pasan). Se comprobó además, introduciendo errores a propósito (mutaciones), que fallan si se rompe cada control importante, incluida la verificación del servidor por el conector. |
+| Extensión real + conector real + tubería real + bóveda **ficticia** | **26 pruebas** de extremo a extremo (`tests/extension`) con **Chromium 141 en Linux** (modo headless), ejecutadas y todas pasan. No se han vuelto a ejecutar tras el cambio de H-4 (conector que solo habla con PassDesk). |
+| Permiso temporal `activeTab` al pulsar el icono de la barra de herramientas | Probado a mano en Edge y Brave en Windows: la ventana de la extensión lista y rellena tras pulsar el icono real. |
+| Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | Las **272 pruebas** de `tests/PassDesk.Tests` (incluidas las de integración del autorrelleno y las del retardo de armado) se han ejecutado en Windows y pasan. A mano, con PassDesk real y una bóveda ficticia aislada: la confirmación (contenido sin contraseña, `Intro`/`Espacio`/`Esc`/cierre cancelan, `Permitir` en gris el primer segundo y otra vez tras `Alt+Tab`, `Tab`+`Espacio` o clic autorizan, cierre sola a los 30 s), el bloqueo durante la confirmación (manual y con `Win+L`), el bloqueo por inactividad, la petición de desbloqueo desde el navegador, PassDesk cerrado, la casilla de Ajustes, el arranque con `--tray` (las ventanas salen delante del navegador), el rechazo de un cliente que no es el conector y de un servidor que no es PassDesk, y un registro sin sitios ni cuentas. Los scripts `install-browser.ps1` y `uninstall-browser.ps1` se han probado con el registro real de Windows. |
+| Edge y Brave **en Windows** | **Probados a mano** (Windows 11, Edge y Brave con un perfil aparte): lista, cancelación y relleno. Brave usa la clave del registro de Chrome. |
+| Chrome estable **en Windows** | **No probado** (no estaba instalado). Debería comportarse como Brave, que lee la misma clave del registro. |
 | Firefox, Safari | No compatibles (otra API de extensiones). |
 
 ## Instalación (Windows, sin permisos de administrador)
@@ -79,7 +80,8 @@ activada en Ajustes, `PassDesk.NativeHost.exe` junto a `PassDesk.exe`, y que el 
 2. Elige la cuenta. Con la confirmación activada, PassDesk te enseña una ventana con la cuenta, el usuario y la página;
    pulsa **Permitir** (o **Cancelar**, la opción por defecto y la que tiene el foco: `Intro`, `Espacio` o `Esc` despistados no
    autorizan). **Permitir** no tiene atajo de teclado y solo se habilita cuando la ventana lleva un segundo seguido activa;
-   si cambias a otra ventana y vuelves, se espera otro segundo.
+   si cambias a otra ventana y vuelves, se espera otro segundo. Si no contestas en 30 segundos, la ventana se cierra sola y
+   no se rellena nada.
 3. *Sugerencias al enfocar los campos* (opcional): en la ventana de la extensión, pulsa «Mostrar sugerencias al enfocar los
    campos de este sitio» y concede el permiso a ese sitio. Después, al pulsar un campo de acceso aparece una sugerencia con
    el servicio y el usuario; `↓`/`↑` para moverte, `Intro` para elegir, `Esc` para cerrar. Se puede retirar en cualquier momento.
@@ -176,6 +178,9 @@ accesibles desde la web. No usa red (CSP con `connect-src 'none'`). Una prueba a
   funciona siempre.
 - Navegadores no Chromium (Firefox, Safari) no están soportados.
 - No hay extensión publicada en ninguna tienda: se carga sin empaquetar, y Chrome puede recordarte que está en modo desarrollador.
+- **Tras «Cancelado», la ventana de la extensión sigue mostrando la cuenta.** Si la vuelves a pulsar, cada elección vale una
+  sola vez, así que PassDesk la rechaza («La elección caducó») sin entregar nada; vuelve a abrir la ventana. Cinco elecciones
+  caducadas en un minuto bloquean los rellenos durante un minuto.
 
 ## Ajustes (PassDesk › Ajustes › Navegador)
 
