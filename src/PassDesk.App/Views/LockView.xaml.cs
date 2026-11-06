@@ -22,6 +22,9 @@ public partial class LockView : UserControl
     private UnlockStatus _retryStatus;
     private bool _busy;
 
+    /// <summary>La contraseña se usa para recuperar la bóveda desde una copia de un guardado, no para desbloquearla.</summary>
+    private bool _recovering;
+
     public LockView()
     {
         InitializeComponent();
@@ -52,14 +55,30 @@ public partial class LockView : UserControl
         UnlockPassword.Clear();
         NewPassword.Clear();
         ConfirmPassword.Clear();
-        bool firstRun = _services.Session.State == VaultState.NotCreated;
+        var session = _services.Session;
+        bool firstRun = session.State == VaultState.NotCreated;
+        bool missing = session.RecoveryPending;
+        _recovering = session.State == VaultState.Locked && (missing || (_recovering && session.CanRecover));
         SetupPanel.Visibility = firstRun ? Visibility.Visible : Visibility.Collapsed;
         UnlockPanel.Visibility = firstRun ? Visibility.Collapsed : Visibility.Visible;
         HeaderGlyph.Text = firstRun ? "" : "";
-        Heading.Text = firstRun ? "Bienvenido a PassDesk" : "PassDesk está bloqueado";
+        Heading.Text = firstRun ? "Bienvenido a PassDesk" : _recovering ? "Recuperar la bóveda" : "PassDesk está bloqueado";
         SubHeading.Text = firstRun
             ? "Crea una contraseña maestra. Protegerá con cifrado las credenciales que importes en este equipo."
-            : "Introduce tu contraseña maestra para continuar.";
+            : _recovering
+                ? (missing ? "No se encuentra el archivo principal de la bóveda" : "El archivo principal de la bóveda no se puede abrir") +
+                  ", pero queda una copia de un guardado anterior. Introduce tu contraseña maestra para recuperarla. " +
+                  "Antes se guarda una copia de todo en la carpeta «recuperacion»: no se borra nada."
+                : "Introduce tu contraseña maestra para continuar.";
+        UnlockButton.Content = _recovering ? "Recuperar bóveda" : "Desbloquear";
+        System.Windows.Automation.AutomationProperties.SetName(UnlockButton, (string)UnlockButton.Content);
+        SetAsideButton.Visibility = missing ? Visibility.Visible : Visibility.Collapsed;
+        if (missing)
+        {
+            // No hay archivo principal que archivar: la alternativa a recuperar es apartar las copias.
+            ArchiveButton.Visibility = Visibility.Collapsed;
+        }
+
         _ = UpdateHelloButtonAsync();
 
         if (IsVisible)
@@ -75,7 +94,7 @@ public partial class LockView : UserControl
             return;
         }
 
-        bool show = _services.Settings.WindowsHelloQuickUnlock && _services.Session.CanQuickUnlock && await _services.Presence.IsAvailableAsync();
+        bool show = !_recovering && _services.Settings.WindowsHelloQuickUnlock && _services.Session.CanQuickUnlock && await _services.Presence.IsAvailableAsync();
         HelloButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -103,10 +122,16 @@ public partial class LockView : UserControl
         }
 
         SetBusy(true);
+        bool recovering = _recovering;
         UnlockResult result;
         try
         {
-            result = await Task.Run(() => _services.Session.Unlock(password.Span));
+            result = await Task.Run(() => recovering ? _services.Session.Recover(password.Span) : _services.Session.Unlock(password.Span));
+        }
+        catch (Exception ex) when (recovering && ex is IOException or UnauthorizedAccessException or VaultFormatException)
+        {
+            ShowUnlockError("No se pudo recuperar la bóveda. No se ha borrado nada: las copias siguen en la carpeta de datos de PassDesk. Inténtalo de nuevo.");
+            return;
         }
         finally
         {
@@ -162,13 +187,28 @@ public partial class LockView : UserControl
             case UnlockStatus.WrongPassword:
                 ShowUnlockError("Contraseña maestra incorrecta.");
                 break;
+            case UnlockStatus.VaultUnreadable or UnlockStatus.VaultCorrupted when !_recovering && _services!.Session.CanRecover:
+                // La principal no se puede abrir (dañada, a medias o de otra cuenta) pero quedan copias de un guardado: se
+                // ofrece recuperarlas antes que empezar de cero. Recuperar no borra nada y comprueba la copia antes de usarla.
+                _recovering = true;
+                Refresh();
+                ShowUnlockError("La bóveda principal no se puede abrir, pero queda una copia de un guardado anterior. Vuelve a escribir la contraseña maestra y pulsa «Recuperar bóveda». Si has cambiado de equipo o de usuario de Windows, restaura mejor una copia de seguridad (.pdbackup).");
+                ShowArchiveOption();
+                break;
             case UnlockStatus.VaultUnreadable:
                 ShowUnlockError("Windows no puede descifrar la bóveda con esta cuenta de usuario. Si has cambiado de equipo o de usuario de Windows, restaura una copia de seguridad (.pdbackup) en una bóveda nueva.");
-                ArchiveButton.Visibility = Visibility.Visible;
+                ShowArchiveOption();
                 break;
             case UnlockStatus.VaultCorrupted:
-                ShowUnlockError("La bóveda está dañada o ha sido modificada fuera de PassDesk. Puedes restaurar una copia de seguridad.");
-                ArchiveButton.Visibility = Visibility.Visible;
+                ShowUnlockError(_recovering
+                    ? "Las copias de la bóveda también están dañadas. Puedes restaurar una copia de seguridad (.pdbackup) en una bóveda nueva."
+                    : "La bóveda está dañada o ha sido modificada fuera de PassDesk. Puedes restaurar una copia de seguridad.");
+                ShowArchiveOption();
+                break;
+            case UnlockStatus.RecoveryRequired:
+                _recovering = true;
+                Refresh();
+                ShowUnlockError("No se encuentra el archivo principal de la bóveda. Escribe la contraseña maestra y pulsa «Recuperar bóveda».");
                 break;
             case UnlockStatus.CryptoUnavailable:
                 ShowUnlockError(CryptoUnavailableException.UserMessage);
@@ -214,10 +254,53 @@ public partial class LockView : UserControl
             ArchiveButton.Visibility = Visibility.Collapsed;
             UnlockError.Visibility = Visibility.Collapsed;
             _services.Session.RefreshStoreState();
+
+            // Si quedan copias de un guardado, la sesión sigue bloqueada y se ofrece recuperarlas (o apartarlas).
+            Refresh();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             ShowUnlockError("No se pudo archivar la bóveda actual.");
+        }
+    }
+
+    /// <summary>El archivo principal existe y no se puede abrir: se ofrece archivarlo (sin borrarlo).</summary>
+    private void ShowArchiveOption() =>
+        ArchiveButton.Visibility = _services!.Session.RecoveryPending ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>
+    /// Sin archivo principal, la alternativa a recuperar (por ejemplo, si no se recuerda la contraseña): mover las copias a la
+    /// carpeta de recuperación, sin borrarlas, y crear una bóveda nueva.
+    /// </summary>
+    private void OnSetAsideCopies(object sender, RoutedEventArgs e)
+    {
+        if (_services is null || _busy)
+        {
+            return;
+        }
+
+        var answer = MessageBox.Show(
+            Window.GetWindow(this)!,
+            "Las copias de la bóveda NO se borrarán: se moverán a la carpeta «recuperacion» de PassDesk (archivos «conservada-…»).\n\n" +
+            "Después podrás crear una bóveda nueva. Si más tarde recuerdas la contraseña, podrás restaurarlas desde Ajustes › Puntos de recuperación….\n\n¿Continuar?",
+            "Apartar las copias y crear una bóveda nueva",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _services.Session.SetAsideRecoveryCopies();
+            UnlockError.Visibility = Visibility.Collapsed;
+            Refresh();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowUnlockError("No se pudieron apartar las copias. No se ha borrado nada.");
         }
     }
 

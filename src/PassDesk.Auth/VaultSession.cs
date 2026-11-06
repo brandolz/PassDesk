@@ -38,6 +38,9 @@ public enum UnlockStatus
 
     /// <summary>No se pudo cargar libsodium (Argon2id). No cuenta como intento fallido.</summary>
     CryptoUnavailable,
+
+    /// <summary>Falta la bóveda principal pero queda una copia de un guardado: hay que recuperarla (<see cref="VaultSession.Recover"/>).</summary>
+    RecoveryRequired,
 }
 
 public sealed record UnlockResult(UnlockStatus Status, TimeSpan RetryAfter = default)
@@ -107,7 +110,8 @@ public sealed class VaultSession : IDisposable
             throw new ArgumentOutOfRangeException(nameof(kdf));
         }
 
-        _state = store.Exists ? VaultState.Locked : VaultState.NotCreated;
+        // Sin bóveda principal pero con una copia de un guardado no es un primer uso: ofrecer «Crear» destruiría la copia.
+        _state = store.Exists || store.RecoveryCopies.Count > 0 ? VaultState.Locked : VaultState.NotCreated;
         _throttle = ReadPersistedThrottle();
     }
 
@@ -202,6 +206,34 @@ public sealed class VaultSession : IDisposable
         }
     }
 
+    /// <summary>
+    /// Falta el archivo principal de la bóveda pero queda una copia de un guardado (<c>.tmp</c> o <c>.bak</c>) que puede ser
+    /// la única versión de los datos. Mientras tanto no se puede crear una bóveda nueva: hay que recuperarla
+    /// (<see cref="Recover"/>) o apartarla (<see cref="SetAsideRecoveryCopies"/>).
+    /// </summary>
+    public bool RecoveryPending
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _state == VaultState.Locked && !_store.Exists && _store.RecoveryCopies.Count > 0;
+            }
+        }
+    }
+
+    /// <summary>Bloqueada y con copias de un guardado: si la principal falta o está dañada, se puede intentar <see cref="Recover"/>.</summary>
+    public bool CanRecover
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _state == VaultState.Locked && _store.RecoveryCopies.Count > 0;
+            }
+        }
+    }
+
     /// <summary>Instantánea de las credenciales (solo con la bóveda desbloqueada).</summary>
     public IReadOnlyList<CredentialEntry> Entries
     {
@@ -264,7 +296,7 @@ public sealed class VaultSession : IDisposable
         VaultStateChangedEventArgs change;
         lock (_sync)
         {
-            if (_state != VaultState.NotCreated || _store.Exists)
+            if (_state != VaultState.NotCreated || _store.Exists || _store.RecoveryCopies.Count > 0)
             {
                 return new UnlockResult(UnlockStatus.AlreadyExists);
             }
@@ -329,6 +361,11 @@ public sealed class VaultSession : IDisposable
                 return new UnlockResult(UnlockStatus.NotAvailable);
             }
 
+            if (!_store.Exists && _store.RecoveryCopies.Count > 0)
+            {
+                return new UnlockResult(UnlockStatus.RecoveryRequired);
+            }
+
             // Antes que la espera: leer el archivo no comprueba la contraseña, y una bóveda que este equipo no puede
             // descifrar (por ejemplo, copiada de otro PC) se avisa en el momento.
             if (!TryReadEnvelope(out byte[] envelope, out var readFailure))
@@ -369,38 +406,164 @@ public sealed class VaultSession : IDisposable
                 return new UnlockResult(UnlockStatus.VaultCorrupted);
             }
 
-            try
-            {
-                if (throttle.FailedAttempts > 0 || throttle.LockedUntilUtc is not null)
-                {
-                    SaveThrottle(UnlockThrottleState.None);
-                }
-
-                // Las bóvedas antiguas (PBKDF2) pasan a Argon2id ahora que se dispone de la contraseña.
-                if (keyring.Header.Kdf.IsWeakerThan(_kdf))
-                {
-                    keyring = UpgradeKeyring(keyring, document!, password);
-                }
-            }
-            catch
-            {
-                // Solo llegan errores fatales (la mejora es de mejor esfuerzo): no se deja nada descifrado en memoria.
-                keyring.Dispose();
-                document!.Dispose();
-                throw;
-            }
-
-            ForgetKeyring();
-            _keyring = keyring;
-            _document = document;
-            PasswordVerified(password);
-            count = document!.Entries.Count;
-            change = Transition(VaultState.Unlocked, null);
+            change = CompleteUnlock(keyring, document!, password, throttle, out count);
         }
 
         AppLog.Info(LogEvent.VaultUnlocked, new LogMetric("entries", count));
         StateChanged?.Invoke(this, change);
         return UnlockResult.Ok;
+    }
+
+    /// <summary>
+    /// Recupera la bóveda desde una copia de un guardado (<c>vault.pdv.tmp</c>, la más reciente, o <c>vault.pdv.bak</c>)
+    /// cuando falta la principal o está dañada. Antes de tocar nada comprueba que la copia se descifra con
+    /// <paramref name="password"/> (contraseña y etiquetas GCM). Después el almacén conserva una copia verificada de todo,
+    /// coloca la copia como bóveda principal, y esta se vuelve a leer y a abrir antes de desbloquear. Nunca borra ni sobrescribe
+    /// una copia sin haberla conservado. Una contraseña que no abre ninguna copia cuenta como intento fallido.
+    /// </summary>
+    public UnlockResult Recover(ReadOnlySpan<char> password)
+    {
+        VaultStateChangedEventArgs change;
+        int count;
+        lock (_sync)
+        {
+            var copies = _store.RecoveryCopies;
+            if (_state != VaultState.Locked || copies.Count == 0)
+            {
+                return new UnlockResult(UnlockStatus.NotAvailable);
+            }
+
+            var now = _clock.UtcNow;
+            var throttle = LoadThrottle();
+            if (throttle.LockedUntilUtc is { } until && until > now)
+            {
+                AppLog.Warn(LogEvent.VaultUnlockThrottled, new LogMetric("waitSeconds", (long)Math.Ceiling((until - now).TotalSeconds)));
+                return new UnlockResult(UnlockStatus.Throttled, until - now);
+            }
+
+            VaultKeyring? keyring = null;
+            VaultDocument? document = null;
+            string? chosen = null;
+            bool wrongPassword = false;
+            bool unreadable = false;
+            foreach (string copy in copies)
+            {
+                byte[] envelope;
+                try
+                {
+                    envelope = _store.ReadRecoveryCopy(copy);
+                }
+                catch (VaultAccessDeniedException ex)
+                {
+                    AppLog.Error(LogEvent.VaultLoadFailed, ex);
+                    unreadable = true;
+                    continue;
+                }
+                catch (Exception ex) when (ex is VaultFormatException or IOException or UnauthorizedAccessException)
+                {
+                    AppLog.Error(LogEvent.VaultLoadFailed, ex);
+                    continue;
+                }
+
+                VaultKeyring candidate;
+                try
+                {
+                    candidate = VaultKeyring.Unlock(VaultKeyring.ReadHeader(envelope), password);
+                }
+                catch (VaultFormatException ex)
+                {
+                    AppLog.Error(LogEvent.VaultLoadFailed, ex);
+                    continue;
+                }
+                catch (InvalidMasterPasswordException)
+                {
+                    wrongPassword = true;
+                    continue;
+                }
+                catch (CryptoUnavailableException ex)
+                {
+                    return CryptoUnavailable(ex);
+                }
+
+                if (TryOpen(candidate, envelope, out document))
+                {
+                    keyring = candidate;
+                    chosen = copy;
+                    break;
+                }
+
+                candidate.Dispose();
+            }
+
+            if (chosen is null)
+            {
+                return wrongPassword
+                    ? RegisterFailure(throttle, now)
+                    : new UnlockResult(unreadable ? UnlockStatus.VaultUnreadable : UnlockStatus.VaultCorrupted);
+            }
+
+            try
+            {
+                _store.RestoreRecoveryCopy(chosen);
+
+                // Lo que cuenta es lo que ha quedado en disco como bóveda principal: se vuelve a leer y a abrir.
+                document!.Dispose();
+                document = null;
+                if (!TryReadEnvelope(out byte[] restored, out var readFailure))
+                {
+                    keyring!.Dispose();
+                    return readFailure!;
+                }
+
+                if (!TryOpen(keyring!, restored, out document))
+                {
+                    keyring!.Dispose();
+                    return new UnlockResult(UnlockStatus.VaultCorrupted);
+                }
+            }
+            catch
+            {
+                keyring!.Dispose();
+                document?.Dispose();
+                throw;
+            }
+
+            change = CompleteUnlock(keyring!, document!, password, throttle, out count);
+        }
+
+        AppLog.Info(LogEvent.VaultRecovered, new LogMetric("entries", count));
+        StateChanged?.Invoke(this, change);
+        return UnlockResult.Ok;
+    }
+
+    /// <summary>
+    /// Aparta (sin borrarlas) las copias de un guardado a la carpeta de recuperación cuando falta la bóveda principal y el
+    /// usuario decide empezar con una nueva (por ejemplo, porque no recuerda la contraseña). Siguen pudiéndose restaurar
+    /// desde Ajustes. Solo actúa sin bóveda principal.
+    /// </summary>
+    public void SetAsideRecoveryCopies()
+    {
+        VaultStateChangedEventArgs? change = null;
+        lock (_sync)
+        {
+            if (_state != VaultState.Locked || _store.Exists)
+            {
+                return;
+            }
+
+            _store.SetAsideRecoveryCopies();
+            if (_store.RecoveryCopies.Count == 0)
+            {
+                ForgetKeyring();
+                change = Transition(VaultState.NotCreated, null);
+            }
+        }
+
+        AppLog.Info(LogEvent.VaultRecoveryCopiesSetAside);
+        if (change is not null)
+        {
+            StateChanged?.Invoke(this, change);
+        }
     }
 
     /// <summary>Desbloqueo rápido con Windows Hello (solo si la clave sigue en memoria y no ha caducado).</summary>
@@ -499,7 +662,8 @@ public sealed class VaultSession : IDisposable
         VaultStateChangedEventArgs change;
         lock (_sync)
         {
-            if (_state != VaultState.Locked || _store.Exists)
+            // Si quedan copias de un guardado, sigue bloqueada para ofrecer recuperarlas en lugar de crear una bóveda nueva.
+            if (_state != VaultState.Locked || _store.Exists || _store.RecoveryCopies.Count > 0)
             {
                 return;
             }
@@ -753,6 +917,38 @@ public sealed class VaultSession : IDisposable
         var args = new VaultStateChangedEventArgs(_state, newState, reason);
         _state = newState;
         return args;
+    }
+
+    /// <summary>Último paso, común al desbloqueo y a la recuperación (con el cerrojo tomado): la bóveda queda abierta.</summary>
+    private VaultStateChangedEventArgs CompleteUnlock(VaultKeyring keyring, VaultDocument document, ReadOnlySpan<char> password, UnlockThrottleState throttle, out int count)
+    {
+        try
+        {
+            if (throttle.FailedAttempts > 0 || throttle.LockedUntilUtc is not null)
+            {
+                SaveThrottle(UnlockThrottleState.None);
+            }
+
+            // Las bóvedas antiguas (PBKDF2) pasan a Argon2id ahora que se dispone de la contraseña.
+            if (keyring.Header.Kdf.IsWeakerThan(_kdf))
+            {
+                keyring = UpgradeKeyring(keyring, document, password);
+            }
+        }
+        catch
+        {
+            // Solo llegan errores fatales (la mejora es de mejor esfuerzo): no se deja nada descifrado en memoria.
+            keyring.Dispose();
+            document.Dispose();
+            throw;
+        }
+
+        ForgetKeyring();
+        _keyring = keyring;
+        _document = document;
+        PasswordVerified(password);
+        count = document.Entries.Count;
+        return Transition(VaultState.Unlocked, null);
     }
 
     private void PasswordVerified(ReadOnlySpan<char> password)

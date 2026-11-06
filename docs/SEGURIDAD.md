@@ -64,8 +64,15 @@ protección más débil.
 - `vault.pdv.bak`: versión anterior de la bóveda (también cifrada), por si una escritura fallara. Al cambiar la
   contraseña maestra se guarda dos veces, para que el `.bak` tampoco se abra ya con la contraseña antigua (si el
   segundo guardado fallara, el cambio sigue hecho y el `.bak` se sustituye en el siguiente guardado).
+- `vault.pdv.tmp`: contenido nuevo de un guardado que aún no se ha puesto en su sitio. Solo queda si el guardado se
+  interrumpió. Igual que el `.bak`, puede ser la única copia de los datos si falta la principal (ver «Guardado y
+  recuperación»).
+- `recuperacion\conservada-<fecha>-<origen>.pdv`: copias exactas (misma protección) que PassDesk guarda al recuperar la
+  bóveda o al apartar sus copias. Nunca se borran solas.
 - `security.json`: contador de intentos fallidos, cifrado con DPAPI (ver «Autenticación y bloqueo»).
-- La escritura es atómica (archivo temporal + reemplazo), para no dejar nunca una bóveda a medias.
+- La escritura es atómica (archivo temporal + reemplazo), para no dejar nunca una bóveda a medias. El reemplazo de
+  Windows (`ReplaceFile`) no es atómico del todo: si falla a mitad (por ejemplo, con el error 1177, que deja el original
+  ya renombrado como `.bak`), PassDesk termina de colocar el archivo nuevo sin sobrescribir nada.
 
 Al abrir la bóveda, cualquier manipulación (un solo bit) se detecta por la verificación de integridad de GCM.
 
@@ -84,7 +91,8 @@ DPAPI cifra con claves derivadas de las credenciales de **tu cuenta de Windows e
 | Restauras una copia del perfil completo (incluido `%APPDATA%\Microsoft\Protect`) en el mismo usuario y equipo | ✅ Normalmente sí | — |
 
 Si PassDesk no puede descifrar la capa DPAPI, lo indica en la pantalla de bloqueo y ofrece **archivar** la bóveda
-ilegible (se renombra, no se borra) para crear una nueva y restaurar la copia desde *Ajustes*.
+ilegible (se renombra, no se borra) para crear una nueva y restaurar la copia desde *Ajustes*. Si quedan copias de un
+guardado (`vault.pdv.bak`, `vault.pdv.tmp`), antes ofrece recuperarlas (ver «Guardado y recuperación»).
 
 Recomendación: exporta una copia `.pdbackup` después de cada importación importante y guárdala en un lugar distinto del
 PC (USB o nube). Al cambiar la contraseña maestra, las copias `.pdbackup` y los puntos de recuperación anteriores siguen
@@ -281,6 +289,24 @@ Desactivado por defecto. Detalle y modelo de amenazas: [NAVEGADOR.md](NAVEGADOR.
   ningún cambio posterior se pudiera guardar hasta reiniciar.
 - **Puntos de recuperación:** antes de cada importación o restauración se copia `vault.pdv` a `recuperacion\`. Se
   restauran desde *Ajustes › Puntos de recuperación…* con la contraseña que tenía la bóveda en ese momento.
+- **Guardado interrumpido o bóveda principal perdida:** si falta `vault.pdv` pero quedan `vault.pdv.tmp` o
+  `vault.pdv.bak` (un corte de luz a mitad de un guardado, un antivirus, un borrado), PassDesk **no ofrece crear una bóveda
+  nueva**, porque eso destruiría esas copias. Muestra «Recuperar la bóveda»:
+  - pide la contraseña maestra y comprueba que la copia se descifra entera, probando primero la más reciente (`.tmp`);
+  - antes de cambiar nada, guarda en `recuperacion\` una copia de la principal (si existe) y de las dos copias, escrita
+    hasta el disco y comparada byte a byte (`conservada-…`);
+  - después coloca la copia tal cual como bóveda principal, sin volver a cifrarla, y la vuelve a abrir antes de desbloquear.
+
+  También se ofrece cuando la principal existe pero no se puede abrir (dañada, a medias). Una contraseña incorrecta no
+  cambia nada y cuenta como intento fallido. Si la recuperación se interrumpe, se puede repetir: no se pierde ninguna
+  copia. Mientras falte la principal y queden copias, PassDesk no guarda nada.
+- **Si no se puede recuperar** (por ejemplo, porque no recuerdas la contraseña): «Apartar las copias y crear una bóveda
+  nueva» las **mueve** a `recuperacion\conservada-…`, sin borrarlas, y solo entonces permite crear una bóveda nueva. Se
+  pueden restaurar más tarde desde *Ajustes › Puntos de recuperación…* con la contraseña que tenían.
+- Las copias `conservada-…` no entran en la limpieza automática de puntos de recuperación ni en la oferta de borrado
+  tras cambiar la contraseña maestra: se borran a mano. Se siguen abriendo con la contraseña que tenían al guardarse.
+- Límite: si el daño está en la cabecera de claves de la principal, PassDesk lo ve como «contraseña incorrecta» y no
+  ofrece recuperar. Las copias siguen intactas, porque con la bóveda bloqueada PassDesk no escribe nada.
 - **Copias antiguas tras cambiar la contraseña maestra:** el cambio no vuelve a cifrar las copias que ya existen, así
   que los puntos de recuperación y las copias `.pdbackup` anteriores se siguen abriendo con la contraseña antigua. Tras
   un cambio correcto, PassDesk lo explica y:
