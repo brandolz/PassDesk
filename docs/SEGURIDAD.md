@@ -297,8 +297,11 @@ Desactivado por defecto. Detalle y modelo de amenazas: [NAVEGADOR.md](NAVEGADOR.
     hasta el disco y comparada byte a byte (`conservada-…`);
   - después coloca la copia tal cual como bóveda principal, sin volver a cifrarla, y la vuelve a abrir antes de desbloquear.
 
-  También se ofrece cuando la principal existe pero no se puede abrir (dañada, a medias). Una contraseña incorrecta no
-  cambia nada y cuenta como intento fallido. Si la recuperación se interrumpe, se puede repetir: no se pierde ninguna
+  También se ofrece cuando la principal existe pero no se puede abrir (dañada, a medias, o de otra cuenta de Windows).
+  Antes de sustituirla se vuelve a mirar la principal: si se abre con la contraseña, solo se desbloquea; si no se puede
+  leer en ese momento (por ejemplo, porque otro programa la tiene abierta) o la contraseña no la abre, no se toca nada.
+  Solo se sustituye si falta o está rota sin remedio. Una contraseña incorrecta no cambia nada y cuenta como intento
+  fallido. Si la recuperación se interrumpe, se puede repetir: no se pierde ninguna
   copia. Mientras falte la principal y queden copias, PassDesk no guarda nada.
 - **Si no se puede recuperar** (por ejemplo, porque no recuerdas la contraseña): «Apartar las copias y crear una bóveda
   nueva» las **mueve** a `recuperacion\conservada-…`, sin borrarlas, y solo entonces permite crear una bóveda nueva. Se

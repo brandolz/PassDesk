@@ -420,11 +420,14 @@ public sealed class VaultSession : IDisposable
     /// <paramref name="password"/> (contraseña y etiquetas GCM). Después el almacén conserva una copia verificada de todo,
     /// coloca la copia como bóveda principal, y esta se vuelve a leer y a abrir antes de desbloquear. Nunca borra ni sobrescribe
     /// una copia sin haberla conservado. Una contraseña que no abre ninguna copia cuenta como intento fallido.
+    /// La principal se mira antes: si se abre con la contraseña, solo se desbloquea; si no se puede leer ahora (en uso) o la
+    /// contraseña no la abre, no se toca nada. Solo se sustituye si falta o está rota sin remedio.
     /// </summary>
     public UnlockResult Recover(ReadOnlySpan<char> password)
     {
         VaultStateChangedEventArgs change;
         int count;
+        bool fromCopy;
         lock (_sync)
         {
             var copies = _store.RecoveryCopies;
@@ -441,99 +444,175 @@ public sealed class VaultSession : IDisposable
                 return new UnlockResult(UnlockStatus.Throttled, until - now);
             }
 
-            VaultKeyring? keyring = null;
-            VaultDocument? document = null;
-            string? chosen = null;
-            bool wrongPassword = false;
-            bool unreadable = false;
-            foreach (string copy in copies)
+            // La principal manda: si existe y se abre con esta contraseña, no hay nada que recuperar y no se toca ningún archivo.
+            var stop = CheckMainBeforeRecovery(password, throttle, now, out var mainKeyring, out var mainDocument);
+            if (stop is not null)
             {
-                byte[] envelope;
+                return stop;
+            }
+
+            fromCopy = mainKeyring is null;
+            if (!fromCopy)
+            {
+                change = CompleteUnlock(mainKeyring!, mainDocument!, password, throttle, out count);
+            }
+            else
+            {
+                VaultKeyring? keyring = null;
+                VaultDocument? document = null;
+                string? chosen = null;
+                bool wrongPassword = false;
+                bool unreadable = false;
+                foreach (string copy in copies)
+                {
+                    byte[] envelope;
+                    try
+                    {
+                        envelope = _store.ReadRecoveryCopy(copy);
+                    }
+                    catch (VaultAccessDeniedException ex)
+                    {
+                        AppLog.Error(LogEvent.VaultLoadFailed, ex);
+                        unreadable = true;
+                        continue;
+                    }
+                    catch (Exception ex) when (ex is VaultFormatException or IOException or UnauthorizedAccessException)
+                    {
+                        AppLog.Error(LogEvent.VaultLoadFailed, ex);
+                        continue;
+                    }
+
+                    VaultKeyring candidate;
+                    try
+                    {
+                        candidate = VaultKeyring.Unlock(VaultKeyring.ReadHeader(envelope), password);
+                    }
+                    catch (VaultFormatException ex)
+                    {
+                        AppLog.Error(LogEvent.VaultLoadFailed, ex);
+                        continue;
+                    }
+                    catch (InvalidMasterPasswordException)
+                    {
+                        wrongPassword = true;
+                        continue;
+                    }
+                    catch (CryptoUnavailableException ex)
+                    {
+                        return CryptoUnavailable(ex);
+                    }
+
+                    if (TryOpen(candidate, envelope, out document))
+                    {
+                        keyring = candidate;
+                        chosen = copy;
+                        break;
+                    }
+
+                    candidate.Dispose();
+                }
+
+                if (chosen is null)
+                {
+                    return wrongPassword
+                        ? RegisterFailure(throttle, now)
+                        : new UnlockResult(unreadable ? UnlockStatus.VaultUnreadable : UnlockStatus.VaultCorrupted);
+                }
+
                 try
                 {
-                    envelope = _store.ReadRecoveryCopy(copy);
-                }
-                catch (VaultAccessDeniedException ex)
-                {
-                    AppLog.Error(LogEvent.VaultLoadFailed, ex);
-                    unreadable = true;
-                    continue;
-                }
-                catch (Exception ex) when (ex is VaultFormatException or IOException or UnauthorizedAccessException)
-                {
-                    AppLog.Error(LogEvent.VaultLoadFailed, ex);
-                    continue;
-                }
+                    _store.RestoreRecoveryCopy(chosen);
 
-                VaultKeyring candidate;
-                try
-                {
-                    candidate = VaultKeyring.Unlock(VaultKeyring.ReadHeader(envelope), password);
-                }
-                catch (VaultFormatException ex)
-                {
-                    AppLog.Error(LogEvent.VaultLoadFailed, ex);
-                    continue;
-                }
-                catch (InvalidMasterPasswordException)
-                {
-                    wrongPassword = true;
-                    continue;
-                }
-                catch (CryptoUnavailableException ex)
-                {
-                    return CryptoUnavailable(ex);
-                }
+                    // Lo que cuenta es lo que ha quedado en disco como bóveda principal: se vuelve a leer y a abrir.
+                    document!.Dispose();
+                    document = null;
+                    if (!TryReadEnvelope(out byte[] restored, out var readFailure))
+                    {
+                        keyring!.Dispose();
+                        return readFailure!;
+                    }
 
-                if (TryOpen(candidate, envelope, out document))
-                {
-                    keyring = candidate;
-                    chosen = copy;
-                    break;
+                    if (!TryOpen(keyring!, restored, out document))
+                    {
+                        keyring!.Dispose();
+                        return new UnlockResult(UnlockStatus.VaultCorrupted);
+                    }
                 }
-
-                candidate.Dispose();
-            }
-
-            if (chosen is null)
-            {
-                return wrongPassword
-                    ? RegisterFailure(throttle, now)
-                    : new UnlockResult(unreadable ? UnlockStatus.VaultUnreadable : UnlockStatus.VaultCorrupted);
-            }
-
-            try
-            {
-                _store.RestoreRecoveryCopy(chosen);
-
-                // Lo que cuenta es lo que ha quedado en disco como bóveda principal: se vuelve a leer y a abrir.
-                document!.Dispose();
-                document = null;
-                if (!TryReadEnvelope(out byte[] restored, out var readFailure))
+                catch
                 {
                     keyring!.Dispose();
-                    return readFailure!;
+                    document?.Dispose();
+                    throw;
                 }
 
-                if (!TryOpen(keyring!, restored, out document))
-                {
-                    keyring!.Dispose();
-                    return new UnlockResult(UnlockStatus.VaultCorrupted);
-                }
+                change = CompleteUnlock(keyring!, document!, password, throttle, out count);
             }
-            catch
-            {
-                keyring!.Dispose();
-                document?.Dispose();
-                throw;
-            }
-
-            change = CompleteUnlock(keyring!, document!, password, throttle, out count);
         }
 
-        AppLog.Info(LogEvent.VaultRecovered, new LogMetric("entries", count));
+        AppLog.Info(fromCopy ? LogEvent.VaultRecovered : LogEvent.VaultUnlocked, new LogMetric("entries", count));
         StateChanged?.Invoke(this, change);
         return UnlockResult.Ok;
+    }
+
+    /// <summary>
+    /// Antes de recuperar se mira la bóveda principal. Devuelve null con <paramref name="keyring"/> si se abre (no hay nada
+    /// que recuperar); null sin él si falta o está rota sin remedio (formato, capa DPAPI o etiqueta GCM), y entonces se
+    /// recurre a las copias; o el resultado con el que hay que parar sin tocar nada: la principal no se puede leer ahora
+    /// (en uso, sin permiso) o la contraseña no la abre. En este último caso no se prueban las copias, para no sustituir
+    /// una principal que puede estar bien por una copia más antigua que se abra con otra contraseña.
+    /// </summary>
+    private UnlockResult? CheckMainBeforeRecovery(ReadOnlySpan<char> password, UnlockThrottleState throttle, DateTimeOffset now, out VaultKeyring? keyring, out VaultDocument? document)
+    {
+        keyring = null;
+        document = null;
+        if (!_store.Exists)
+        {
+            return null;
+        }
+
+        byte[] envelope;
+        try
+        {
+            envelope = _store.ReadEnvelope();
+        }
+        catch (Exception ex) when (ex is VaultFormatException or VaultAccessDeniedException or FileNotFoundException)
+        {
+            AppLog.Error(LogEvent.VaultLoadFailed, ex);
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppLog.Error(LogEvent.VaultLoadFailed, ex);
+            return new UnlockResult(UnlockStatus.VaultUnreadable);
+        }
+
+        VaultKeyring candidate;
+        try
+        {
+            candidate = VaultKeyring.Unlock(VaultKeyring.ReadHeader(envelope), password);
+        }
+        catch (VaultFormatException ex)
+        {
+            AppLog.Error(LogEvent.VaultLoadFailed, ex);
+            return null;
+        }
+        catch (InvalidMasterPasswordException)
+        {
+            return RegisterFailure(throttle, now);
+        }
+        catch (CryptoUnavailableException ex)
+        {
+            return CryptoUnavailable(ex);
+        }
+
+        if (!TryOpen(candidate, envelope, out document))
+        {
+            candidate.Dispose();
+            return null;
+        }
+
+        keyring = candidate;
+        return null;
     }
 
     /// <summary>

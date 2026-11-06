@@ -169,6 +169,74 @@ public class VaultRecoveryTests
         Assert.Equal(damaged, Read(Assert.Single(Preserved(store), p => p.EndsWith("-principal.pdv", StringComparison.Ordinal))));
     }
 
+    // ---- La principal manda ----
+
+    [Fact]
+    public void Recovering_while_the_main_vault_is_fine_just_unlocks_and_replaces_nothing()
+    {
+        using var temp = new TempDirectory();
+        var store = NewVault(temp, "Uno", "Dos");
+        byte[] main = Read(store.FilePath);
+        byte[] bak = Read(store.BackupPath);
+
+        using var session = NewSession(store);
+        Assert.True(session.CanRecover); // hay .bak, como siempre tras guardar
+        Assert.True(session.Recover(Fake.MasterPassword).Succeeded);
+        Assert.Equal(["Uno", "Dos"], Titles(session)); // no la versión anterior del .bak
+        Assert.Equal(main, Read(store.FilePath));
+        Assert.Equal(bak, Read(store.BackupPath));
+        Assert.Empty(Preserved(store));
+    }
+
+    [Fact]
+    public void A_main_vault_that_cannot_be_read_right_now_is_never_replaced()
+    {
+        using var temp = new TempDirectory();
+        var store = NewVault(temp, "Uno", "Dos");
+        byte[] main = Read(store.FilePath);
+
+        using var session = NewSession(store);
+        using (new FileStream(store.FilePath, FileMode.Open, FileAccess.Read, FileShare.None)) // otro programa la tiene abierta
+        {
+            Assert.Equal(UnlockStatus.VaultUnreadable, session.Unlock(Fake.MasterPassword).Status);
+            Assert.Equal(UnlockStatus.VaultUnreadable, session.Recover(Fake.MasterPassword).Status);
+        }
+
+        Assert.Equal(main, Read(store.FilePath));
+        Assert.Empty(Preserved(store));
+        Assert.True(session.Recover(Fake.MasterPassword).Succeeded); // ya libre: se abre la principal tal cual
+        Assert.Equal(["Uno", "Dos"], Titles(session));
+        Assert.Equal(main, Read(store.FilePath));
+    }
+
+    [Fact]
+    public void A_wrong_password_for_a_readable_main_vault_never_falls_back_to_the_copies()
+    {
+        using var temp = new TempDirectory();
+        var store = NewVault(temp, "Uno", "Dos");
+        using (var otherTemp = new TempDirectory())
+        {
+            // Un .bak que se abre con otra contraseña (por ejemplo, de antes de cambiarla).
+            var other = new DpapiVaultStore(otherTemp.File("vault.pdv"));
+            using (var session = NewSession(other))
+            {
+                Assert.True(session.CreateVault(Fake.OtherMasterPassword).Succeeded);
+            }
+
+            File.Copy(other.FilePath, store.BackupPath, overwrite: true);
+        }
+
+        byte[] main = Read(store.FilePath);
+        byte[] bak = Read(store.BackupPath);
+        var security = new InMemorySecurityStateStore();
+        using var recovering = NewSession(store, security);
+        Assert.Equal(UnlockStatus.WrongPassword, recovering.Recover(Fake.OtherMasterPassword).Status);
+        Assert.Equal(1, security.State.FailedAttempts);
+        Assert.Equal(main, Read(store.FilePath));
+        Assert.Equal(bak, Read(store.BackupPath));
+        Assert.Empty(Preserved(store));
+    }
+
     // ---- Guardados que fallan a mitad ----
 
     [Fact]
