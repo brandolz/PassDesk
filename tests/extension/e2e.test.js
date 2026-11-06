@@ -270,9 +270,13 @@ test('si se bloquea PassDesk mientras espera la confirmación, la contraseña no
   assert.equal(await page.inputValue('#pass'), '');
   assert.equal(await page.inputValue('#user'), '');
   assert.equal(fillsCount(), before);
-  const reply = lastFill().reply;
-  assert.equal(reply.ok, false);
-  assert.equal(reply.error, 'locked');
+  // El registro del conector puede tardar un instante más en escribirse (visto en WSL): se espera a la respuesta.
+  let reply = lastFill().reply;
+  for (const deadline = Date.now() + 5000; !reply && Date.now() < deadline; reply = lastFill().reply) {
+    await settle(100);
+  }
+  assert.equal(reply?.ok, false);
+  assert.equal(reply?.error, 'locked');
 });
 
 test('una página hostil no puede pedir credenciales a la extensión ni provocar la sugerencia', async () => {
