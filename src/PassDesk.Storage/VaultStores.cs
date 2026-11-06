@@ -19,7 +19,28 @@ public interface IVaultStore
     /// importación o una restauración, para poder deshacerlo.
     /// </summary>
     void CreateRecoveryPoint(string reason);
+
+    /// <summary>
+    /// Copias que dejó un guardado y que pueden ser la única versión de los datos si falta o está dañada la bóveda
+    /// principal, de la más reciente a la más antigua. Vacío si no hay (o si el almacén no las tiene).
+    /// </summary>
+    IReadOnlyList<string> RecoveryCopies => [];
+
+    /// <summary>Sobre de una de las <see cref="RecoveryCopies"/> (ya sin la capa local). No cambia nada en disco.</summary>
+    byte[] ReadRecoveryCopy(string copy) => throw new NotSupportedException();
+
+    /// <summary>Conserva una copia verificada de todo y convierte la copia indicada en la bóveda principal.</summary>
+    void RestoreRecoveryCopy(string copy) => throw new NotSupportedException();
+
+    /// <summary>Aparta las copias (sin borrarlas) para poder crear una bóveda nueva.</summary>
+    void SetAsideRecoveryCopies() => throw new NotSupportedException();
 }
+
+/// <summary>
+/// Falta la bóveda principal y queda una copia de un guardado que puede ser la única versión de los datos: no se guarda
+/// nada hasta recuperarla o apartarla.
+/// </summary>
+public sealed class VaultRecoveryPendingException() : IOException("Hay una copia de la bóveda pendiente de recuperar.");
 
 /// <summary>
 /// Bóveda local en disco. Añade una segunda capa de cifrado con DPAPI (ámbito usuario actual)
@@ -43,6 +64,12 @@ public sealed class DpapiVaultStore : IVaultStore
 
     private const string RecoveryPointPattern = "vault-*.pdv";
 
+    /// <summary>
+    /// Prefijo de las copias conservadas al recuperar o apartar (por ejemplo «conservada-20261106-181500-000-bak.pdv»). No
+    /// coincide con <see cref="RecoveryPointPattern"/>, así que la limpieza de puntos de recuperación nunca las borra.
+    /// </summary>
+    public const string PreservedCopyPrefix = "conservada-";
+
     public DpapiVaultStore(string path, string? recoveryDirectory = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -59,34 +86,76 @@ public sealed class DpapiVaultStore : IVaultStore
 
     public bool Exists => File.Exists(FilePath);
 
-    public byte[] ReadEnvelope()
+    /// <summary>Contenido nuevo de un guardado que aún no se ha puesto en su sitio (la copia más reciente).</summary>
+    public string TempPath => FilePath + ".tmp";
+
+    /// <summary>Versión anterior de la bóveda, la que había antes del último guardado.</summary>
+    public string BackupPath => FilePath + ".bak";
+
+    /// <summary>
+    /// <c>vault.pdv.tmp</c> y <c>vault.pdv.bak</c>, si existen y no están vacíos. No se descifran aquí: cualquiera que tenga
+    /// contenido se trata como potencialmente recuperable.
+    /// </summary>
+    public IReadOnlyList<string> RecoveryCopies => [.. new[] { TempPath, BackupPath }.Where(p => new FileInfo(p) is { Exists: true, Length: > 0 })];
+
+    public byte[] ReadEnvelope() => ReadVaultFile(FilePath);
+
+    public byte[] ReadRecoveryCopy(string copy) => ReadVaultFile(CheckRecoveryCopy(copy));
+
+    /// <summary>
+    /// Convierte una copia (<c>.tmp</c> o <c>.bak</c>) en la bóveda principal. Antes guarda en la carpeta de recuperación una
+    /// copia verificada, byte a byte, de la principal (si existe) y de las dos copias; si eso falla, no cambia nada. Después
+    /// coloca la copia elegida con una escritura atómica que no toca el <c>.bak</c>. Se puede repetir si se interrumpe.
+    /// </summary>
+    public void RestoreRecoveryCopy(string copy)
     {
-        var info = new FileInfo(FilePath);
-        if (!info.Exists)
+        string source = CheckRecoveryCopy(copy);
+        byte[] file = File.ReadAllBytes(source);
+        if (file.Length > MaxFileBytes || !IsVaultFile(file))
         {
-            throw new FileNotFoundException("No existe la bóveda.");
+            throw new VaultFormatException("La copia no tiene el formato de bóveda local de PassDesk.");
         }
 
-        if (info.Length > MaxFileBytes)
+        string stamp = Stamp();
+        foreach (var (path, label) in new[] { (FilePath, "principal"), (TempPath, "tmp"), (BackupPath, "bak") })
         {
-            throw new VaultFormatException("El archivo de la bóveda es demasiado grande.");
+            if (File.Exists(path))
+            {
+                CopyVerified(path, PreservedPath(stamp, label));
+            }
         }
 
-        byte[] bytes = File.ReadAllBytes(FilePath);
-        if (bytes.Length <= HeaderLength
-            || !bytes.AsSpan(0, 4).SequenceEqual(Magic)
-            || bytes[4] != Version
-            || bytes[5] != ProtectionDpapiCurrentUser)
-        {
-            throw new VaultFormatException("El archivo no tiene el formato de bóveda local de PassDesk.");
-        }
+        AtomicFile.Write(FilePath, file, keepPrevious: false);
+    }
 
-        return WindowsDataProtection.Unprotect(bytes[HeaderLength..]);
+    /// <summary>
+    /// Mueve <c>.tmp</c> y <c>.bak</c> a la carpeta de recuperación («conservada-…»), para poder crear una bóveda nueva sin
+    /// sobrescribirlos. Nunca borra nada: se pueden restaurar después desde Ajustes.
+    /// </summary>
+    public void SetAsideRecoveryCopies()
+    {
+        string stamp = Stamp();
+        foreach (var (path, label) in new[] { (TempPath, "tmp"), (BackupPath, "bak") })
+        {
+            if (File.Exists(path))
+            {
+                File.Move(path, PreservedPath(stamp, label));
+            }
+        }
     }
 
     public void WriteEnvelope(byte[] envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+
+        // Sin bóveda principal, una copia de un guardado puede ser la única versión de los datos, y guardar la destruiría
+        // (el primer paso vacía el .tmp y el siguiente guardado sustituye el .bak): antes hay que recuperarla o apartarla.
+        if (!Exists && RecoveryCopies.Count > 0)
+        {
+            AppLog.Warn(LogEvent.VaultRecoveryPending);
+            throw new VaultRecoveryPendingException();
+        }
+
         byte[] blob = WindowsDataProtection.Protect(envelope);
         var file = new byte[HeaderLength + blob.Length];
         Magic.CopyTo(file);
@@ -167,6 +236,72 @@ public sealed class DpapiVaultStore : IVaultStore
 
         AppLog.Info(LogEvent.RecoveryPointsDeleted, new LogMetric("deleted", targets.Length - failed.Count), new LogMetric("failed", failed.Count));
         return failed;
+    }
+
+    private static byte[] ReadVaultFile(string path)
+    {
+        var info = new FileInfo(path);
+        if (!info.Exists)
+        {
+            throw new FileNotFoundException("No existe la bóveda.");
+        }
+
+        if (info.Length > MaxFileBytes)
+        {
+            throw new VaultFormatException("El archivo de la bóveda es demasiado grande.");
+        }
+
+        byte[] bytes = File.ReadAllBytes(path);
+        if (!IsVaultFile(bytes))
+        {
+            throw new VaultFormatException("El archivo no tiene el formato de bóveda local de PassDesk.");
+        }
+
+        return WindowsDataProtection.Unprotect(bytes[HeaderLength..]);
+    }
+
+    private static bool IsVaultFile(ReadOnlySpan<byte> bytes) =>
+        bytes.Length > HeaderLength && bytes[..4].SequenceEqual(Magic) && bytes[4] == Version && bytes[5] == ProtectionDpapiCurrentUser;
+
+    /// <summary>Solo se admiten las dos copias de esta bóveda: nunca otra ruta.</summary>
+    private string CheckRecoveryCopy(string copy)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(copy);
+        string full = Path.GetFullPath(copy);
+        return string.Equals(full, Path.GetFullPath(TempPath), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(full, Path.GetFullPath(BackupPath), StringComparison.OrdinalIgnoreCase)
+            ? full
+            : throw new ArgumentException("No es una copia de esta bóveda.", nameof(copy));
+    }
+
+    private static string Stamp() => DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string PreservedPath(string stamp, string label)
+    {
+        Directory.CreateDirectory(RecoveryDirectory);
+        string target = Path.Combine(RecoveryDirectory, $"{PreservedCopyPrefix}{stamp}-{label}.pdv");
+        for (int suffix = 2; File.Exists(target); suffix++)
+        {
+            target = Path.Combine(RecoveryDirectory, $"{PreservedCopyPrefix}{stamp}-{label}-{suffix}.pdv");
+        }
+
+        return target;
+    }
+
+    /// <summary>Copia escrita hasta el disco y comprobada byte a byte; si no coincide, se lanza antes de seguir.</summary>
+    private static void CopyVerified(string source, string target)
+    {
+        byte[] bytes = File.ReadAllBytes(source);
+        using (var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+        {
+            stream.Write(bytes);
+            stream.Flush(flushToDisk: true);
+        }
+
+        if (!File.ReadAllBytes(target).AsSpan().SequenceEqual(bytes))
+        {
+            throw new IOException("La copia conservada no coincide con el original.");
+        }
     }
 }
 
@@ -446,6 +581,9 @@ public static class BackupFile
 /// <summary>Escritura atómica: archivo temporal + reemplazo, para no dejar una bóveda a medias.</summary>
 public static class AtomicFile
 {
+    /// <summary>Sustituye a <see cref="File.Replace(string, string, string?, bool)"/> solo en el flujo de una prueba, para simular fallos a mitad.</summary>
+    internal static readonly AsyncLocal<Action<string, string, string?>?> ReplaceOverride = new();
+
     public static void Write(string path, ReadOnlySpan<byte> content, bool keepPrevious)
     {
         string fullPath = Path.GetFullPath(path);
@@ -468,11 +606,17 @@ public static class AtomicFile
         string? backup = keepPrevious ? fullPath + ".bak" : null;
         try
         {
-            File.Replace(temp, fullPath, backup, ignoreMetadataErrors: true);
+            Replace(temp, fullPath, backup);
+        }
+        catch (IOException) when (!File.Exists(fullPath))
+        {
+            // ReplaceFile no es atómico: puede fallar (error 1177) después de renombrar el original como copia de seguridad.
+            // Solo falta poner el contenido nuevo en su sitio; sin sobrescribir nada y sin tocar la copia.
+            File.Move(temp, fullPath);
         }
         catch (IOException)
         {
-            // Algunos sistemas de archivos no admiten ReplaceFile; alternativa equivalente.
+            // ReplaceFile no cambió nada, o el sistema de archivos no lo admite: alternativa equivalente.
             if (backup is not null)
             {
                 File.Copy(fullPath, backup, overwrite: true);
@@ -480,5 +624,16 @@ public static class AtomicFile
 
             File.Move(temp, fullPath, overwrite: true);
         }
+    }
+
+    private static void Replace(string temp, string fullPath, string? backup)
+    {
+        if (ReplaceOverride.Value is { } replace)
+        {
+            replace(temp, fullPath, backup);
+            return;
+        }
+
+        File.Replace(temp, fullPath, backup, ignoreMetadataErrors: true);
     }
 }

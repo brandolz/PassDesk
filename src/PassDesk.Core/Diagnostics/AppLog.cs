@@ -79,6 +79,9 @@ public enum LogEvent
     BrowserAutofillBadRequest,
     BrowserAutofillClientRejected,
     BrowserAutofillFailed,
+    VaultRecovered,
+    VaultRecoveryCopiesSetAside,
+    VaultRecoveryPending,
 }
 
 /// <summary>Contador numérico asociado a un evento (por ejemplo, número de registros importados).</summary>

@@ -20,6 +20,8 @@
                     <TextBlock x:Name="UnlockError" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}" Margin="0,8,0,0" Visibility="Collapsed" />
                     <Button x:Name="ArchiveButton" Style="{StaticResource Button.Subtle}" HorizontalAlignment="Left" Margin="-10,6,0,0" Visibility="Collapsed"
                             Content="Empezar con una bóveda nueva y restaurar una copia…" Foreground="{DynamicResource Brush.AccentText}" Click="OnArchiveVault" />
+                    <Button x:Name="SetAsideButton" Style="{StaticResource Button.Subtle}" HorizontalAlignment="Left" Margin="-10,6,0,0" Visibility="Collapsed"
+                            Content="Apartar las copias y crear una bóveda nueva…" Foreground="{DynamicResource Brush.AccentText}" Click="OnSetAsideCopies" />
                     <Button x:Name="UnlockButton" Style="{StaticResource Button.Accent}" Content="Desbloquear" MinHeight="36" Margin="0,16,0,0" Click="OnUnlockClick"
                             AutomationProperties.Name="Desbloquear" />
                     <Button x:Name="HelloButton" Style="{StaticResource Button.Standard}" MinHeight="36" Margin="0,8,0,0" Click="OnHelloClick" Visibility="Collapsed"
