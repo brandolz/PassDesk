@@ -28,7 +28,7 @@ PassDesk puede rellenar tu usuario y contraseña en Chrome, Edge y Brave **cuand
 | Permiso temporal `activeTab` al pulsar el icono de la barra de herramientas | Probado a mano en Edge y Brave en Windows: la ventana de la extensión lista y rellena tras pulsar el icono real. |
 | Bóveda real (`VaultSession`, DPAPI, memoria protegida), ajustes, ventana de confirmación, verificación del conector por ruta, scripts `.ps1` | Las **272 pruebas** de `tests/PassDesk.Tests` (incluidas las de integración del autorrelleno y las del retardo de armado) se han ejecutado en Windows y pasan. A mano, con PassDesk real y una bóveda ficticia aislada: la confirmación (contenido sin contraseña, `Intro`/`Espacio`/`Esc`/cierre cancelan, `Permitir` en gris el primer segundo y otra vez tras `Alt+Tab`, `Tab`+`Espacio` o clic autorizan, cierre sola a los 30 s), el bloqueo durante la confirmación (manual y con `Win+L`), el bloqueo por inactividad, la petición de desbloqueo desde el navegador, PassDesk cerrado, la casilla de Ajustes, el arranque con `--tray` (las ventanas salen delante del navegador), el rechazo de un cliente que no es el conector y de un servidor que no es PassDesk, y un registro sin sitios ni cuentas. Los scripts `install-browser.ps1` y `uninstall-browser.ps1` se han probado con el registro real de Windows. |
 | Edge y Brave **en Windows** | **Probados a mano** (Windows 11, Edge y Brave con un perfil aparte): lista, cancelación y relleno. Brave usa la clave del registro de Chrome. |
-| Chrome estable **en Windows** | **No probado** (no estaba instalado). Debería comportarse como Brave, que lee la misma clave del registro. |
+| Chrome estable **en Windows** | **Probado a mano** (Chrome 157.0.8103.51, Windows 11, perfil aparte de Chrome y bóveda ficticia; 18/11/2026). Funcionan: cargar la extensión sin empaquetar con el identificador fijo, el acceso a la pestaña al pulsar el icono, la lista sin contraseñas, la confirmación delante de Chrome (`Intro` y `Esc` cancelan, `Permitir` con clic rellena), el cierre sola a los 30 s, el bloqueo con `Ctrl+L` y «Abrir PassDesk» desde la extensión, el rechazo de la página por HTTP y de un sitio sin cuentas, `Ctrl+Mayús+L`, conceder, usar y retirar las sugerencias de un sitio, reiniciar Chrome, PassDesk cerrado e integración desactivada. El registro solo contiene códigos. Usa la clave del registro de Chrome, la misma que Brave. Con la instalación de prueba del 26/10, cuyo código del autorrelleno es el actual. |
 | Firefox, Safari | No compatibles (otra API de extensiones). |
 
 ## Instalación (Windows, sin permisos de administrador)
@@ -116,8 +116,8 @@ Formularios de registro o de cambio de contraseña (campos de «contraseña nuev
   No descifra, no guarda, no registra y termina tras responder. No hay procesos persistentes. Antes de reenviar una
   solicitud que abre una ventana de PassDesk (la confirmación o la pantalla de desbloqueo), le cede el primer plano de
   Windows (`AllowSetForegroundWindow`), porque PassDesk, en segundo plano, no puede ponerse delante del navegador por sí
-  solo. Si Windows tampoco lo permite, PassDesk hace parpadear su botón en la barra de tareas. Que la ventana salga delante
-  de un navegador real **no se ha verificado todavía en Windows**.
+  solo. Si Windows tampoco lo permite, PassDesk hace parpadear su botón en la barra de tareas. Comprobado a mano en Windows
+  con Edge, Brave y Chrome: la ventana sale delante del navegador.
 - **PassDesk** (`src/PassDesk.Browser`, `src/PassDesk.Auth/SessionAutofillVault.cs`, `src/PassDesk.App/Infrastructure/AutofillService.cs`):
   el **único** que decide. Reutiliza la sesión existente: no hay segunda bóveda ni segunda autenticación. El conector no
   puede desbloquear la bóveda; solo puede pedir que PassDesk muestre su pantalla de bloqueo.

@@ -407,10 +407,10 @@ datos ficticios sin tocar la bóveda real. Las capturas se regeneran con:
 - Con PassDesk en la bandeja, una exportación de Apple detectada no avisa (no hay botón en la barra de tareas que
   parpadee): la vista previa se abre al volver a la ventana.
 
-- **Autorrelleno en navegadores:** no probado todavía en Chrome, Edge ni Brave sobre Windows (sí con Chromium en Linux y
-  credenciales ficticias); no rellena en páginas HTTP, marcos de otro origen ni formularios de registro; exige PassDesk en
-  ejecución y desbloqueado; la extensión se carga sin empaquetar (no está en ninguna tienda). Lista completa en
-  [docs/NAVEGADOR.md](docs/NAVEGADOR.md#limitaciones-conocidas).
+- **Autorrelleno en navegadores:** probado a mano en Windows con Edge, Brave y Chrome, y de forma automática con Chromium
+  en Linux (siempre con credenciales ficticias); no rellena en páginas HTTP, marcos de otro origen ni formularios de
+  registro; exige PassDesk en ejecución y desbloqueado; la extensión se carga sin empaquetar (no está en ninguna tienda).
+  Lista completa en [docs/NAVEGADOR.md](docs/NAVEGADOR.md#limitaciones-conocidas).
 
 Los cuatro puntos de riesgo bajo que la auditoría dejó pendientes ya están corregidos (ver
 [docs/SEGURIDAD.md](docs/SEGURIDAD.md#corregido-tras-la-auditoría)). Sigue habiendo un límite: quien controle tu sesión
