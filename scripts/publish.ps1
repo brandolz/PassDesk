@@ -6,24 +6,54 @@
   -Mode framework      (por defecto) Ejecutable único (~1 MB + dependencias) que usa el
                        "Runtime de escritorio de .NET 10" instalado en Windows.
   -Mode selfcontained  Incluye el runtime de .NET (más grande, no requiere instalar nada).
+  -Zip                 (con -Mode selfcontained) Crea además el paquete de prueba
+                       dist\PassDesk-prueba-<versión>-win-x64.zip y su huella SHA-256 (.sha256). Exige que no haya
+                       cambios sin commitear en archivos versionados y nunca sobrescribe un ZIP que ya exista.
 
   Requiere el SDK de .NET 10 (https://dotnet.microsoft.com/download). Si no está en el PATH,
   se usa la instalación local de %LOCALAPPDATA%\Microsoft\dotnet.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\publish.ps1
+
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File scripts\publish.ps1 -Mode selfcontained -Zip
 #>
 param(
     [ValidateSet("framework", "selfcontained")]
     [string]$Mode = "framework",
     [string]$Output = (Join-Path $PSScriptRoot "..\dist"),
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$Zip
 )
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 $env:DOTNET_NOLOGO = "1"
+
+# Comprobaciones antes de compilar, para no descubrir un problema tras varios minutos.
+$vcRedist = Join-Path $Output "vc_redist.x64.exe"
+if ($Mode -eq "selfcontained" -and (Test-Path $vcRedist)) {
+    # Es un ejecutable que el probador abrirá con permisos de administrador: solo si lo firma Microsoft.
+    $signature = Get-AuthenticodeSignature -FilePath $vcRedist
+    if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
+        throw "$vcRedist no tiene una firma válida de Microsoft ($($signature.Status)); no se incluye en el paquete."
+    }
+}
+
+if ($Zip) {
+    if ($Mode -ne "selfcontained") { throw "-Zip crea el paquete de prueba: úsalo con -Mode selfcontained." }
+    # El ZIP se reparte: tiene que corresponder exactamente a un commit, sin cambios sin guardar en archivos versionados.
+    if (& git -C $root status --porcelain --untracked-files=no) {
+        throw "Hay cambios sin commitear en archivos versionados: el paquete debe salir de un commit limpio."
+    }
+
+    $version = ([xml](Get-Content (Join-Path $root "Directory.Build.props") -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+    $zipName = "PassDesk-prueba-$version-win-x64.zip"
+    $zipPath = Join-Path $Output $zipName
+    if (Test-Path $zipPath) { throw "Ya existe ${zipPath}: no se sobrescribe un paquete que puede haberse repartido." }
+}
 
 function Find-Dotnet {
     $local = Join-Path $env:LOCALAPPDATA "Microsoft\dotnet\dotnet.exe"
@@ -81,9 +111,34 @@ Copy-Item (Join-Path $root "README.md") $target -ErrorAction SilentlyContinue
 if ($Mode -eq "selfcontained") {
     Copy-Item (Join-Path $root "docs\LEEME-PRUEBA.txt") $target
     Copy-Item (Join-Path $root "scripts\install-browser.ps1"), (Join-Path $root "scripts\uninstall-browser.ps1") $target
-    $vcRedist = Join-Path $Output "vc_redist.x64.exe"
-    if (Test-Path $vcRedist) { Copy-Item $vcRedist $target }
+    if (Test-Path $vcRedist) { Copy-Item $vcRedist $target } # firma ya comprobada al empezar
     else { Write-Warning "Falta $vcRedist (descárgalo de https://aka.ms/vc14/vc_redist.x64.exe); el paquete no lo incluirá." }
+}
+
+if ($Zip) {
+    # Entrada a entrada y con «/»: ZipFile.CreateFromDirectory en Windows PowerShell 5.1 escribe «\», que el formato ZIP
+    # no admite y que otras herramientas convierten en nombres de archivo con barras.
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $base = (Resolve-Path -LiteralPath $target).ProviderPath.TrimEnd('\')
+    $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($file in Get-ChildItem -LiteralPath $base -Recurse -File) {
+            $entryName = $file.FullName.Substring($base.Length + 1).Replace('\', '/')
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+    $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash
+    [IO.File]::WriteAllText("$zipPath.sha256", "$hash  $zipName`n", (New-Object System.Text.UTF8Encoding($false)))
+    $commit = (& git -C $root rev-parse --short HEAD)
+    $tag = (& git -C $root tag --points-at HEAD) | Where-Object { $_ -eq "v$version" }
+    Write-Host ""
+    Write-Host "Paquete: $zipPath" -ForegroundColor Green
+    Write-Host "SHA-256: $hash"
+    Write-Host "Commit:  $commit  (etiqueta: $(if ($tag) { $tag } else { 'ninguna' }))"
+    if (-not $tag) { Write-Warning "HEAD no tiene la etiqueta v${version}: este ZIP sirve de ensayo, no para repartir." }
 }
 Write-Host ""
 Write-Host "Listo: $target\PassDesk.exe" -ForegroundColor Green
