@@ -1,4 +1,4 @@
-PassDesk - versión de prueba 1.1.0
+PassDesk - versión de prueba 1.1.1
 ==================================
 
 Gracias por probar PassDesk. Es un gestor de contraseñas local para Windows: todo
@@ -11,17 +11,29 @@ Requisitos: Windows 10 (versión 2004 o posterior) u 11, de 64 bits.
 No hace falta instalar .NET. Solo si aparece un error de «libsodium» hay que
 instalar Visual C++, que va incluido (ver «Problemas»).
 
-Novedad de la 1.1.0: autorrelleno en el navegador (Chrome, Edge o Brave), opcional. Ver
-el punto 3.
+Novedad de la 1.1.1: si un guardado se interrumpe (un corte de luz, por
+ejemplo) o falta el archivo de la bóveda, PassDesk ya no ofrece crear una nueva,
+que borraría la copia anterior: ofrece «Recuperar la bóveda» con tu contraseña.
+Novedad de la 1.1.0: autorrelleno en el navegador (Chrome, Edge o Brave),
+opcional. Ver el punto 3.
 
 
 1. EJECUTAR
 -----------
-1. Clic derecho en el ZIP › «Extraer todo...» y elige una carpeta, por ejemplo
-   Documentos\PassDesk-prueba. No lo abras desde dentro del ZIP.
-2. Doble clic en PassDesk.exe. La primera vez tarda unos segundos en abrirse.
-3. Si aparece «Windows protegió su PC»: el programa no está firmado digitalmente.
+1. Comprueba el ZIP antes de abrirlo. Te envío su huella (SHA-256) por un medio
+   distinto del ZIP. En la carpeta donde lo descargaste: clic derecho en un hueco
+   › «Abrir en Terminal» y escribe
+      Get-FileHash .\PassDesk-prueba-1.1.1-win-x64.zip
+   Las letras y números de «Hash» deben ser iguales a la huella que te envié.
+   Si no coinciden, no lo abras y avísame.
+2. Clic derecho en el ZIP › «Extraer todo...» y elige una carpeta, por ejemplo
+   C:\PassDeskPrueba. No lo abras desde dentro del ZIP, y mejor no en una
+   carpeta que se sincronice con OneDrive (a veces lo es Documentos).
+3. Doble clic en PassDesk.exe. La primera vez tarda unos segundos en abrirse.
+4. Si aparece «Windows protegió su PC»: el programa no está firmado digitalmente.
    Pulsa «Más información» › «Ejecutar de todas formas».
+   Si en cambio Windows 11 dice que «Control inteligente de aplicaciones» lo ha
+   bloqueado, no hay forma de abrirlo: avísame (no desactives esa protección).
 
 
 2. CREAR UNA BÓVEDA DE PRUEBA
