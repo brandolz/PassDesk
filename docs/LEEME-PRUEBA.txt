@@ -11,7 +11,7 @@ Requisitos: Windows 10 (versión 2004 o posterior) u 11, de 64 bits.
 No hace falta instalar .NET. Solo si aparece un error de «libsodium» hay que
 instalar Visual C++, que va incluido (ver «Problemas»).
 
-Novedad de la 1.1.0: autorrelleno en el navegador (Edge o Brave), opcional. Ver
+Novedad de la 1.1.0: autorrelleno en el navegador (Chrome, Edge o Brave), opcional. Ver
 el punto 3.
 
 
@@ -39,12 +39,12 @@ Al cerrar la ventana, PassDesk sigue en la bandeja del sistema (junto al reloj).
 Para salir del todo: clic derecho en su icono › «Salir».
 
 
-3. AUTORRELLENO EN EL NAVEGADOR (opcional; Microsoft Edge o Brave)
-------------------------------------------------------------------
+3. AUTORRELLENO EN EL NAVEGADOR (opcional; Chrome, Edge o Brave)
+----------------------------------------------------------------
 PassDesk puede rellenar el usuario y la contraseña en una página web, siempre
-después de que lo permitas en una ventana de PassDesk. Probado con Edge y Brave;
-Chrome debería funcionar igual, pero no se ha probado. Usa cuentas inventadas en
-páginas de prueba, por ejemplo https://the-internet.herokuapp.com/login.
+después de que lo permitas en una ventana de PassDesk. Probado con Chrome, Edge
+y Brave. Usa cuentas inventadas en páginas de prueba, por ejemplo
+https://the-internet.herokuapp.com/login.
 
 Hazlo después de extraer el ZIP en su carpeta definitiva: si luego la mueves,
 repite los pasos A y B.
@@ -54,10 +54,12 @@ A. Registrar el conector (una vez)
       «Abrir en Terminal». En Windows 10: Mayús + clic derecho en un hueco ›
       «Abrir la ventana de PowerShell aquí».
    2. Escribe esto y pulsa Intro:
-         powershell -ExecutionPolicy Bypass -File .\install-browser.ps1 -Browsers Edge,Brave
+         powershell -ExecutionPolicy Bypass -File .\install-browser.ps1 -Browsers Chrome,Edge,Brave
       Solo escribe en tu usuario de Windows; no pide permisos de administrador.
 
 B. Cargar la extensión (una vez por navegador)
+   - Chrome: abre  chrome://extensions , activa «Modo de desarrollador» ›
+     «Cargar descomprimida» › elige la carpeta  browser\extension  de PassDesk.
    - Edge: abre  edge://extensions , activa «Modo de desarrollador» › «Cargar
      desempaquetada» › elige la carpeta  browser\extension  de PassDesk.
    - Brave: abre  brave://extensions , activa «Modo de desarrollador» › «Cargar
