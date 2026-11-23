@@ -503,6 +503,33 @@ test('demasiadas solicitudes seguidas se limitan', async () => {
   assert.ok(replies.slice(30).some((r) => r.error === 'rate_limited'), 'las siguientes se limitan');
 });
 
+test('ventana de la extensión: tras cancelar se puede volver a elegir, sin «La elección caducó»', async () => {
+  // La prueba anterior agota el cupo de consultas: se espera a que se vacíe la ventana de un minuto.
+  await settle(61000);
+  const user = byUser('ana');
+  const fillReplies = () => exchanges().filter((e) => e.request?.type === 'fill' && e.reply).map((e) => e.reply);
+  await command('confirm no', /CONFIRM-MODE no/);
+  const page = await open(U('uno.example.test'));
+  const popup = await popupFor(page);
+  const before = fillReplies().length;
+  for (let i = 1; i <= 2; i++) {
+    await popup.locator('.account:not([disabled])').click();
+    const deadline = Date.now() + 10000;
+    while (fillReplies().length < before + i && Date.now() < deadline) {
+      await settle(100);
+    }
+    await popup.locator('.account:not([disabled])').waitFor();
+    assert.match(await popup.locator('#status').innerText(), /Cancelado/);
+  }
+  // Cada intento usó una elección nueva: ninguno caducó ni contó como ficha inválida.
+  assert.deepEqual(fillReplies().slice(before).map((r) => r.error), ['denied', 'denied']);
+
+  await command('confirm yes', /CONFIRM-MODE yes/);
+  await popup.locator('.account').click();
+  await popup.waitForEvent('close');
+  assert.equal(await page.inputValue('#pass'), user.password);
+});
+
 test('una extensión no autorizada no puede usar el conector', async () => {
   const mark = env.sandbox.mark();
   const result = await env.rogueWorker.evaluate(async () => {

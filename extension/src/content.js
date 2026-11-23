@@ -212,8 +212,10 @@
         refresh(current.anchor);
         break;
       case 'rate_limited':
-      case 'busy':
         showMessage('Demasiadas solicitudes seguidas. Espera un momento.');
+        break;
+      case 'busy':
+        showMessage('PassDesk está atendiendo otra solicitud. Inténtalo en unos segundos.');
         break;
       default:
         showMessage('No se pudo rellenar este formulario.');

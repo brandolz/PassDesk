@@ -65,26 +65,67 @@ function renderSiteToggle(origin, enabled) {
   }
 }
 
+let filling = false;
+// Cada elección vale una sola vez. Tras un relleno que no salió, PassDesk ya ha usado las que se muestran: si se vuelve a
+// elegir, antes se pide una nueva (antes, volver a pulsar daba «La elección caducó» y contaba como intento no válido).
+let spent = false;
+
+function setAccountsEnabled(enabled) {
+  for (const node of accounts.querySelectorAll('button')) {
+    node.disabled = !enabled;
+  }
+}
+
 async function fill(tabId, account) {
+  // Un relleno a la vez: un doble clic, o elegir otra cuenta mientras PassDesk espera la confirmación, no envía otra solicitud.
+  if (filling) {
+    return;
+  }
+  filling = true;
+  setAccountsEnabled(false);
   setStatus('Esperando a PassDesk…');
-  const reply = await send({ t: 'popup:fill', tabId, id: account.id, token: account.token });
+  const choice = spent ? await freshChoice(tabId, account) : account;
+  if (!choice) {
+    filling = false;
+    return;
+  }
+  const reply = await send({ t: 'popup:fill', tabId, id: choice.id, token: choice.token });
+  filling = false;
   if (reply.ok) {
     window.close();
     return;
   }
-  switch (reply.error) {
+  spent = true;
+  setStatus(fillFailureMessage(reply.error));
+  setAccountsEnabled(true);
+}
+
+// La misma cuenta con una elección nueva. Si ya no está (la pestaña cambió de sitio) o PassDesk no responde, lo muestra.
+async function freshChoice(tabId, account) {
+  const reply = await send({ t: 'popup:list', tabId });
+  const match = reply.ok && Array.isArray(reply.matches) ? reply.matches.find((m) => m.id === account.id) : undefined;
+  if (match) {
+    spent = false;
+    return match;
+  }
+  show(tabId, reply, reply.ok ? 'Esa cuenta ya no corresponde a esta página.' : null);
+  return null;
+}
+
+function fillFailureMessage(error) {
+  switch (error) {
     case 'denied':
-      setStatus('Cancelado. No se ha rellenado nada.');
-      break;
+      return 'Cancelado. No se ha rellenado nada. Puedes volver a elegir.';
     case 'locked':
-      setStatus('PassDesk está bloqueado.');
-      break;
+      return 'PassDesk está bloqueado. Desbloquéalo y vuelve a elegir.';
     case 'expired':
-    case 'bad_request':
-      setStatus('La elección caducó. Vuelve a abrir esta ventana.');
-      break;
+      return 'La elección caducó. Vuelve a elegir.';
+    case 'busy':
+      return 'PassDesk está atendiendo otra solicitud. Vuelve a elegir en unos segundos.';
+    case 'rate_limited':
+      return 'Demasiados intentos seguidos. Espera un minuto y vuelve a elegir.';
     default:
-      setStatus('No se pudo rellenar este formulario.');
+      return 'No se pudo rellenar este formulario.';
   }
 }
 
@@ -120,7 +161,12 @@ async function main() {
     setStatus('No hay ninguna pestaña activa.');
     return;
   }
-  const reply = await send({ t: 'popup:list', tabId });
+  show(tabId, await send({ t: 'popup:list', tabId }), null);
+}
+
+// Muestra la respuesta de PassDesk con las cuentas de la pestaña. «notice» sustituye al texto habitual si hay cuentas.
+function show(tabId, reply, notice) {
+  accounts.replaceChildren();
   const origin = httpsOrigin(reply.origin);
   siteLine.textContent = origin ?? '';
   if (!reply.ok) {
@@ -161,7 +207,8 @@ async function main() {
   } else if (reply.matches.length === 0) {
     setStatus('PassDesk no tiene ninguna cuenta guardada para este sitio.');
   } else {
-    setStatus(reply.matches.length === 1 ? 'Elige la cuenta para rellenar:' : 'Hay varias cuentas. Elige una:');
+    setStatus(notice ?? (reply.matches.length === 1 ? 'Elige la cuenta para rellenar:' : 'Hay varias cuentas. Elige una:'));
+    spent = false;
     renderAccounts(tabId, reply.matches);
   }
   renderSiteToggle(origin, reply.siteEnabled);
