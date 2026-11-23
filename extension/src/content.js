@@ -217,6 +217,9 @@
       case 'busy':
         showMessage('PassDesk está atendiendo otra solicitud. Inténtalo en unos segundos.');
         break;
+      case 'too_long':
+        showMessage('El usuario o la contraseña tiene más de 4096 caracteres y no se puede rellenar desde el navegador. Cópialo desde PassDesk.');
+        break;
       default:
         showMessage('No se pudo rellenar este formulario.');
     }

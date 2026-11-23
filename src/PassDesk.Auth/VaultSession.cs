@@ -41,6 +41,9 @@ public enum UnlockStatus
 
     /// <summary>Falta la bóveda principal pero queda una copia de un guardado: hay que recuperarla (<see cref="VaultSession.Recover"/>).</summary>
     RecoveryRequired,
+
+    /// <summary>El archivo de la bóveda no se puede leer ahora (otro programa lo tiene abierto, o sin permiso). No se toca nada.</summary>
+    VaultInUse,
 }
 
 public sealed record UnlockResult(UnlockStatus Status, TimeSpan RetryAfter = default)
@@ -583,7 +586,7 @@ public sealed class VaultSession : IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             AppLog.Error(LogEvent.VaultLoadFailed, ex);
-            return new UnlockResult(UnlockStatus.VaultUnreadable);
+            return new UnlockResult(UnlockStatus.VaultInUse);
         }
 
         VaultKeyring candidate;
@@ -1121,7 +1124,7 @@ public sealed class VaultSession : IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             AppLog.Error(LogEvent.VaultLoadFailed, ex);
-            failure = new UnlockResult(UnlockStatus.VaultUnreadable);
+            failure = new UnlockResult(UnlockStatus.VaultInUse);
         }
 
         envelope = [];

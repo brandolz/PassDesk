@@ -198,8 +198,9 @@ public class VaultRecoveryTests
         using var session = NewSession(store);
         using (new FileStream(store.FilePath, FileMode.Open, FileAccess.Read, FileShare.None)) // otro programa la tiene abierta
         {
-            Assert.Equal(UnlockStatus.VaultUnreadable, session.Unlock(Fake.MasterPassword).Status);
-            Assert.Equal(UnlockStatus.VaultUnreadable, session.Recover(Fake.MasterPassword).Status);
+            // «En uso», no «Windows no puede descifrar» ni ofrecer recuperarla (I-2).
+            Assert.Equal(UnlockStatus.VaultInUse, session.Unlock(Fake.MasterPassword).Status);
+            Assert.Equal(UnlockStatus.VaultInUse, session.Recover(Fake.MasterPassword).Status);
         }
 
         Assert.Equal(main, Read(store.FilePath));

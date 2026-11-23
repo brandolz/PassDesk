@@ -1,4 +1,4 @@
-PassDesk - versión de prueba 1.1.2
+PassDesk - versión de prueba 1.1.3
 ==================================
 
 Gracias por probar PassDesk. Es un gestor de contraseñas local para Windows: todo
@@ -10,6 +10,10 @@ importes tus contraseñas reales.
 Requisitos: Windows 10 (versión 2004 o posterior) u 11, de 64 bits.
 No hace falta instalar nada más: .NET y Visual C++ van dentro de PassDesk.exe.
 
+Novedades de la 1.1.3: en el autorrelleno, si cancelas puedes volver a elegir
+la cuenta sin que diga «La elección caducó», y los avisos de la extensión dicen
+qué falla y qué hacer. Si otro programa tiene abierto el archivo de la bóveda,
+PassDesk ya no dice que «Windows no puede descifrar» la bóveda.
 Novedad de la 1.1.2: ya no hace falta instalar Visual C++ (antes, sin él,
 aparecía un error de «libsodium»).
 Novedad de la 1.1.1: si un guardado se interrumpe (un corte de luz, por
@@ -24,7 +28,7 @@ opcional. Ver el punto 3.
 1. Comprueba el ZIP antes de abrirlo. Te envío su huella (SHA-256) por un medio
    distinto del ZIP. En la carpeta donde lo descargaste: clic derecho en un hueco
    › «Abrir en Terminal» y escribe
-      Get-FileHash .\PassDesk-prueba-1.1.2-win-x64.zip
+      Get-FileHash .\PassDesk-prueba-1.1.3-win-x64.zip
    Las letras y números de «Hash» deben ser iguales a la huella que te envié.
    Si no coinciden, no lo abras y avísame.
 2. Clic derecho en el ZIP › «Extraer todo...» y elige una carpeta, por ejemplo
@@ -87,17 +91,18 @@ C. Activarlo en PassDesk
 
 D. Usarlo
    1. Guarda en PassDesk una cuenta inventada con la dirección de la página donde
-      inicias sesión (los subdominios no cuentan: www.ejemplo.com y ejemplo.com
-      son sitios distintos).
+      inicias sesión (los subdominios no cuentan: login.ejemplo.com y ejemplo.com
+      son sitios distintos; el «www.» del principio sí da igual).
    2. Con PassDesk abierto (vale en la bandeja), abre esa página, pulsa el icono
       de PassDesk en la barra del navegador y elige la cuenta.
    3. PassDesk muestra una ventana con la cuenta, el usuario y la página.
-      «Permitir» se activa al cabo de un segundo; Intro, Espacio y Esc cancelan.
-      Si no contestas en 30 segundos, se cancela sola.
+      «Permitir» se activa al cabo de un segundo y se pulsa con el ratón; Intro,
+      Espacio y Esc cancelan. Si no contestas en 30 segundos, se cancela sola.
 
-   Si la extensión dice «PassDesk no está abierto...»: comprueba que PassDesk
-   está abierto, que la casilla de Ajustes está activada y que no has movido la
-   carpeta después del paso A.
+   Si la extensión dice «PassDesk no responde»: comprueba que PassDesk está
+   abierto y que la casilla de Ajustes está activada.
+   Si dice que «no encuentra el conector»: repite el paso A (también si has
+   movido la carpeta) y reinicia el navegador.
 
    Si cancelas, puedes volver a elegir la cuenta en la misma ventanita.
 

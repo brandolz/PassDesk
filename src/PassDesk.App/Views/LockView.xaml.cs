@@ -170,6 +170,8 @@ public partial class LockView : UserControl
         }
     }
 
+    internal const string VaultInUseMessage = "No se puede leer el archivo de la bóveda: otro programa lo tiene abierto (una copia de seguridad, el antivirus o una carpeta sincronizada, por ejemplo). Espera un momento y vuelve a intentarlo. No se ha cambiado nada.";
+
     private void HandleUnlockResult(UnlockResult result)
     {
         switch (result.Status)
@@ -212,6 +214,9 @@ public partial class LockView : UserControl
                 break;
             case UnlockStatus.CryptoUnavailable:
                 ShowUnlockError(CryptoUnavailableException.UserMessage);
+                break;
+            case UnlockStatus.VaultInUse:
+                ShowUnlockError(VaultInUseMessage);
                 break;
             default:
                 ShowUnlockError("No se pudo desbloquear. Inténtalo de nuevo.");
