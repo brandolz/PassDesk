@@ -28,6 +28,13 @@
     <Resource Include="Assets\PassDesk.ico" />
   </ItemGroup>
 
+  <!-- Runtime de Visual C++ que necesita libsodium (Argon2id). Va dentro del ejecutable único y se descomprime junto a
+       libsodium.dll, que es donde Windows busca sus dependencias: así no hay que instalar Visual C++. publish.ps1 pasa la
+       ruta de la copia redistribuible de Microsoft (carpeta Redist de Visual Studio o de sus Build Tools). -->
+  <ItemGroup Condition="'$(VcRuntimeDll)' != ''">
+    <None Include="$(VcRuntimeDll)" Link="vcruntime140.dll" CopyToOutputDirectory="Never" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Herramienta de capturas con datos ficticios (tools/PassDesk.UiSnapshots). -->
     <InternalsVisibleTo Include="PassDesk.UiSnapshots" />
