@@ -88,8 +88,11 @@ export function normalizeReply(reply, requestId, expectedOrigin) {
   // Un secreto nunca se recorta: o se entrega entero o no se entrega.
   for (const field of ['username', 'password']) {
     if (reply[field] !== undefined) {
-      if (typeof reply[field] !== 'string' || reply[field].length > 4096) {
+      if (typeof reply[field] !== 'string') {
         return { ok: false, error: 'bad_reply' };
+      }
+      if (reply[field].length > 4096) {
+        return { ok: false, error: 'too_long' }; // P-7: con su propio mensaje, no «No se pudo rellenar»
       }
       result[field] = reply[field];
     }

@@ -319,6 +319,7 @@ public partial class QuickSearchWindow : Window
             UnlockStatus.Throttled => $"Demasiados intentos. Espera {Math.Ceiling(result.RetryAfter.TotalSeconds):0} s.",
             UnlockStatus.NotAvailable => "Windows Hello no está disponible. Usa la contraseña maestra.",
             UnlockStatus.CryptoUnavailable => PassDesk.Crypto.CryptoUnavailableException.UserMessage,
+            UnlockStatus.VaultInUse => LockView.VaultInUseMessage,
             _ => "No se pudo desbloquear. Abre PassDesk para más detalles.",
         };
         LockedMessage.Foreground = (System.Windows.Media.Brush)FindResource("Brush.Danger");

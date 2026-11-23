@@ -124,6 +124,8 @@ function fillFailureMessage(error) {
       return 'PassDesk está atendiendo otra solicitud. Vuelve a elegir en unos segundos.';
     case 'rate_limited':
       return 'Demasiados intentos seguidos. Espera un minuto y vuelve a elegir.';
+    case 'too_long':
+      return 'El usuario o la contraseña tiene más de 4096 caracteres y no se puede rellenar desde el navegador. Cópialo desde PassDesk.';
     default:
       return 'No se pudo rellenar este formulario.';
   }
@@ -177,9 +179,12 @@ function show(tabId, reply, notice) {
       case 'no_access':
         setStatus('Abre esta ventana desde el icono de la extensión para dar acceso a la pestaña actual.');
         break;
+      // U-2: dos causas distintas, cada una con lo que hay que hacer.
       case 'host_missing':
+        setStatus('El navegador no encuentra el conector de PassDesk. Ejecuta install-browser.ps1 en la carpeta de PassDesk (otra vez si la has movido) y reinicia el navegador.');
+        break;
       case 'unavailable':
-        setStatus('PassDesk no está abierto, o la integración con el navegador está desactivada o sin instalar.');
+        setStatus('PassDesk no responde. Comprueba que está abierto (vale en la bandeja) y que en Ajustes › Navegador está activada la casilla «Permitir que la extensión de PassDesk rellene contraseñas».');
         break;
       case 'locked':
         setStatus('PassDesk está bloqueado.');
