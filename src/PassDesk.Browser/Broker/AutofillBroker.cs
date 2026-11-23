@@ -209,18 +209,9 @@ public sealed class AutofillBroker : IDisposable
             return Error(request, ErrorCodes.Locked);
         }
 
-        long epoch = Interlocked.Read(ref _epoch);
-        var grant = _tokens.Consume(request.Token!);
-        if (grant is null)
-        {
-            return InvalidAttempt(request, ErrorCodes.Expired);
-        }
-
-        if (grant.CredentialId != request.CredentialId || grant.Origin != origin.Serialize() || grant.Epoch != epoch)
-        {
-            return InvalidAttempt(request, ErrorCodes.Denied);
-        }
-
+        // Antes de mirar la ficha: con otro relleno en curso (esperando la confirmación), una segunda solicitud responde
+        // «ocupado» sin gastar su ficha ni contar como ficha inválida. Así un doble clic, o elegir otra cuenta mientras se
+        // espera, no consume elecciones ni acerca el bloqueo por fichas inválidas.
         if (!_fillGate.Wait(0, CancellationToken.None))
         {
             return Error(request, ErrorCodes.Busy);
@@ -228,6 +219,18 @@ public sealed class AutofillBroker : IDisposable
 
         try
         {
+            long epoch = Interlocked.Read(ref _epoch);
+            var grant = _tokens.Consume(request.Token!);
+            if (grant is null)
+            {
+                return InvalidAttempt(request, ErrorCodes.Expired);
+            }
+
+            if (grant.CredentialId != request.CredentialId || grant.Origin != origin.Serialize() || grant.Epoch != epoch)
+            {
+                return InvalidAttempt(request, ErrorCodes.Denied);
+            }
+
             var policy = _policy();
             var options = new OriginMatchOptions { AllowSubdomains = policy.AllowSubdomains };
             var info = _vault.Snapshot().FirstOrDefault(e => e.Id == request.CredentialId);

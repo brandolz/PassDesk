@@ -520,6 +520,50 @@ public class BrokerTests
         Assert.Equal(ErrorCodes.Denied, ErrorOf(await first));
     }
 
+    [Fact]
+    public async Task A_busy_reply_does_not_spend_the_choice()
+    {
+        _confirmer.HoldAnswer = true;
+        _vault.Add("Segunda", "https://ejemplo.test", Fake.User2, Fake.Password2);
+        using var broker = NewBroker();
+        var list = Assert.IsType<ListResult>((await Run(broker, Requests.List("https://ejemplo.test"))).Result);
+        var first = broker.HandleAsync(Requests.Fill("https://ejemplo.test", list.Matches[0]), CancellationToken.None);
+        await _confirmer.Shown_.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Se elige la otra cuenta mientras PassDesk espera la confirmación: «ocupado», pero su ficha sigue valiendo.
+        Assert.Equal(ErrorCodes.Busy, ErrorOf(await broker.HandleAsync(Requests.Fill("https://ejemplo.test", list.Matches[1]), CancellationToken.None)));
+        _confirmer.Complete(false);
+        Assert.Equal(ErrorCodes.Denied, ErrorOf(await first));
+
+        _confirmer.HoldAnswer = false;
+        using var second = Assert.IsType<SecretResult>(await broker.HandleAsync(Requests.Fill("https://ejemplo.test", list.Matches[1]), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Repeating_a_choice_while_it_waits_is_busy_and_never_locks_fills_out()
+    {
+        _confirmer.HoldAnswer = true;
+        using var broker = NewBroker();
+        var match = await FirstMatch(broker, "https://ejemplo.test");
+        var first = broker.HandleAsync(Requests.Fill("https://ejemplo.test", match), CancellationToken.None);
+        await _confirmer.Shown_.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Un doble clic, o varios, mientras se muestra la confirmación: más de las 5 fichas inválidas que bloquean los rellenos.
+        for (int i = 0; i < 6; i++)
+        {
+            Assert.Equal(ErrorCodes.Busy, ErrorOf(await broker.HandleAsync(Requests.Fill("https://ejemplo.test", match), CancellationToken.None)));
+        }
+
+        _confirmer.Complete(false);
+        Assert.Equal(ErrorCodes.Denied, ErrorOf(await first));
+        Assert.False(_audit.Has(AutofillAuditEvent.RateLimited));
+
+        // Ni bloqueo ni penalización: una elección nueva rellena al momento.
+        _confirmer.HoldAnswer = false;
+        var fresh = await FirstMatch(broker, "https://ejemplo.test");
+        using var secret = Assert.IsType<SecretResult>(await broker.HandleAsync(Requests.Fill("https://ejemplo.test", fresh), CancellationToken.None));
+    }
+
     // ---- Límites de uso ----
 
     [Fact]

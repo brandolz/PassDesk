@@ -99,8 +99,7 @@ D. Usarlo
    está abierto, que la casilla de Ajustes está activada y que no has movido la
    carpeta después del paso A.
 
-   Problema conocido: después de «Cancelado», si vuelves a pulsar la cuenta en la
-   misma ventanita sale «La elección caducó». Ciérrala y vuelve a abrirla.
+   Si cancelas, puedes volver a elegir la cuenta en la misma ventanita.
 
 
 4. DESINSTALAR (no deja nada instalado)
