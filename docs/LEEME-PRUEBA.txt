@@ -1,4 +1,4 @@
-PassDesk - versión de prueba 1.1.1
+PassDesk - versión de prueba 1.1.2
 ==================================
 
 Gracias por probar PassDesk. Es un gestor de contraseñas local para Windows: todo
@@ -8,9 +8,10 @@ IMPORTANTE: es una versión de prueba. Usa solo datos inventados. No guardes ni
 importes tus contraseñas reales.
 
 Requisitos: Windows 10 (versión 2004 o posterior) u 11, de 64 bits.
-No hace falta instalar .NET. Solo si aparece un error de «libsodium» hay que
-instalar Visual C++, que va incluido (ver «Problemas»).
+No hace falta instalar nada más: .NET y Visual C++ van dentro de PassDesk.exe.
 
+Novedad de la 1.1.2: ya no hace falta instalar Visual C++ (antes, sin él,
+aparecía un error de «libsodium»).
 Novedad de la 1.1.1: si un guardado se interrumpe (un corte de luz, por
 ejemplo) o falta el archivo de la bóveda, PassDesk ya no ofrece crear una nueva,
 que borraría la copia anterior: ofrece «Recuperar la bóveda» con tu contraseña.
@@ -23,7 +24,7 @@ opcional. Ver el punto 3.
 1. Comprueba el ZIP antes de abrirlo. Te envío su huella (SHA-256) por un medio
    distinto del ZIP. En la carpeta donde lo descargaste: clic derecho en un hueco
    › «Abrir en Terminal» y escribe
-      Get-FileHash .\PassDesk-prueba-1.1.1-win-x64.zip
+      Get-FileHash .\PassDesk-prueba-1.1.2-win-x64.zip
    Las letras y números de «Hash» deben ser iguales a la huella que te envié.
    Si no coinciden, no lo abras y avísame.
 2. Clic derecho en el ZIP › «Extraer todo...» y elige una carpeta, por ejemplo
@@ -118,16 +119,9 @@ D. Usarlo
 
 PROBLEMAS
 ---------
-- «No se pudo cargar el componente de cifrado (libsodium)»: falta el runtime de
-  Visual C++ de Microsoft, que muchos PC ya tienen.
-  1. Sal de PassDesk (icono de la bandeja › «Salir»).
-  2. Doble clic en vc_redist.x64.exe, incluido en esta carpeta (instalador
-     oficial de Microsoft, firmado digitalmente; pide permisos de administrador).
-  3. Marca «Acepto los términos» › «Instalar» y vuelve a abrir PassDesk.
-  También se puede descargar de la página oficial de Microsoft:
-  https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist
-  Al desinstalar PassDesk puedes dejar Visual C++ instalado: lo usan otros
-  programas.
+- «No se pudo cargar el componente de cifrado (libsodium)»: no debería pasar,
+  porque va dentro de PassDesk.exe. Suele ser un antivirus que lo bloquea:
+  avísame con una captura.
 - Un antivirus puede bloquear el programa por no estar firmado; si ocurre,
   avísame en vez de desactivar el antivirus.
 

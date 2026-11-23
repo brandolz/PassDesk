@@ -144,6 +144,9 @@ Detalle completo en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
   Alternativa: publicar con `-Mode selfcontained`, que lo incluye.
 - Para compilar: **SDK de .NET 10** (`winget install Microsoft.DotNet.SDK.10`). En este equipo se instaló de forma
   local en `%LOCALAPPDATA%\Microsoft\dotnet` y los scripts lo encuentran solos.
+- Para que `PassDesk.exe` no necesite Visual C++ instalado (libsodium lo usa): **Build Tools de Visual Studio 2022** con
+  las herramientas de C++ x64 (`Microsoft.VisualStudio.Component.VC.Tools.x86.x64`). `publish.ps1` mete su
+  `vcruntime140.dll` dentro del ejecutable; sin ellas avisa, y con `-Zip` se detiene.
 
 ### Pasos (sin permisos de administrador)
 
