@@ -153,6 +153,7 @@ Detalle completo en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 ```powershell
 # 1) Compilar, ejecutar las pruebas y generar dist\PassDesk\PassDesk.exe
 powershell -ExecutionPolicy Bypass -File scripts\publish.ps1
+#    Con un certificado de firma de código instalado, añade -CertificateThumbprint <huella> para firmar los .exe
 
 # 2) Instalar en %LOCALAPPDATA%\Programs\PassDesk con acceso directo en el menú Inicio
 powershell -ExecutionPolicy Bypass -File scripts\install.ps1            # añade -DesktopShortcut si quieres icono en el escritorio
