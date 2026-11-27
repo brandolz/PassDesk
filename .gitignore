@@ -16,3 +16,6 @@ tests/extension/.last-suggestion.png
 
 # Salida generada por graphify
 graphify-out/
+
+# Herramienta local del vídeo tutorial (capturas pesadas)
+scripts/tutorial-video/
