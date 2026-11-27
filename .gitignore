@@ -13,3 +13,6 @@ dist/
 Passwords*.zip
 node_modules/
 tests/extension/.last-suggestion.png
+
+# Salida generada por graphify
+graphify-out/
