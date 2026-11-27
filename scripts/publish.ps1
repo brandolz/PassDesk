@@ -9,6 +9,9 @@
   -Zip                 (con -Mode selfcontained) Crea además el paquete de prueba
                        dist\PassDesk-prueba-<versión>-win-x64.zip y su huella SHA-256 (.sha256). Exige que no haya
                        cambios sin commitear en archivos versionados y nunca sobrescribe un ZIP que ya exista.
+  -CertificateThumbprint  Huella de un certificado de firma de código con clave privada (en CurrentUser\My o
+                       LocalMachine\My). Firma PassDesk.exe y PassDesk.NativeHost.exe (SHA-256, con sello de tiempo)
+                       antes de crear el ZIP. Sin este parámetro se publica sin firmar.
 
   vcruntime140.dll (runtime de Visual C++ que necesita libsodium) se mete dentro de PassDesk.exe si están instaladas las
   Build Tools de Visual Studio con las herramientas de C++ x64; con -Zip son obligatorias.
@@ -21,13 +24,17 @@
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\publish.ps1 -Mode selfcontained -Zip
+
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File scripts\publish.ps1 -Mode selfcontained -Zip -CertificateThumbprint 0123456789ABCDEF0123456789ABCDEF01234567
 #>
 param(
     [ValidateSet("framework", "selfcontained")]
     [string]$Mode = "framework",
     [string]$Output = (Join-Path $PSScriptRoot "..\dist"),
     [switch]$SkipTests,
-    [switch]$Zip
+    [switch]$Zip,
+    [string]$CertificateThumbprint
 )
 
 $ErrorActionPreference = "Stop"
@@ -47,6 +54,18 @@ if ($Zip) {
     $zipName = "PassDesk-prueba-$version-win-x64.zip"
     $zipPath = Join-Path $Output $zipName
     if (Test-Path $zipPath) { throw "Ya existe ${zipPath}: no se sobrescribe un paquete que puede haberse repartido." }
+}
+
+$certificate = $null
+if ($CertificateThumbprint) {
+    # Quita espacios y los caracteres invisibles que añade copiar la huella desde el administrador de certificados.
+    $thumbprint = ($CertificateThumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
+    $certificate = "Cert:\CurrentUser\My", "Cert:\LocalMachine\My" |
+        ForEach-Object { Get-ChildItem $_ -CodeSigningCert -ErrorAction SilentlyContinue } |
+        Where-Object { $_.Thumbprint -eq $thumbprint -and $_.HasPrivateKey } | Select-Object -First 1
+    if (-not $certificate) { throw "No hay ningún certificado de firma de código con clave privada y huella $thumbprint en CurrentUser\My ni en LocalMachine\My." }
+    if ($certificate.NotAfter -lt (Get-Date)) { throw "El certificado $thumbprint caducó el $($certificate.NotAfter.ToString('d'))." }
+    Write-Host "Se firmará con: $($certificate.Subject)" -ForegroundColor Cyan
 }
 
 # vcruntime140.dll redistribuible (carpeta Redist de Visual Studio o de sus Build Tools), o $null si no hay.
@@ -124,6 +143,17 @@ Write-Host "Publicando el conector del navegador..." -ForegroundColor Cyan
     -p:PublishSingleFile=true -p:DebugType=none `
     -o $target
 if ($LASTEXITCODE -ne 0) { throw "La publicación del conector ha fallado." }
+
+if ($certificate) {
+    foreach ($exe in "PassDesk.exe", "PassDesk.NativeHost.exe") {
+        # Con sello de tiempo, la firma sigue siendo válida cuando caduque el certificado.
+        $signed = Set-AuthenticodeSignature -FilePath (Join-Path $target $exe) -Certificate $certificate `
+            -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com"
+        if ($signed.Status -ne "Valid") { throw "No se pudo firmar ${exe}: $($signed.Status). $($signed.StatusMessage)" }
+        if (-not (Get-AuthenticodeSignature -FilePath (Join-Path $target $exe)).TimeStamperCertificate) { throw "$exe quedó firmado sin sello de tiempo." }
+        Write-Host "Firmado: $exe" -ForegroundColor Cyan
+    }
+}
 
 # Extensión sin empaquetar (se carga desde esta carpeta en Chrome, Edge o Brave).
 $extensionTarget = Join-Path $target "browser\extension"
